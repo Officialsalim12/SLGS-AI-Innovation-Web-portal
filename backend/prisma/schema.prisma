@@ -1,0 +1,370 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PARTICIPANT
+  MENTOR
+  JUDGE
+  ADMIN
+}
+
+enum TeamRole {
+  MEMBER
+  LEAD
+}
+
+enum SubmissionStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  FINAL
+}
+
+enum TaskColumn {
+  ideas
+  todo
+  inProgress
+  testing
+  completed
+}
+
+enum ChatChannel {
+  team
+  mentor
+}
+
+model User {
+  id                        String    @id @default(cuid())
+  email                     String    @unique
+  passwordHash              String?
+  name                      String
+  role                      Role      @default(PARTICIPANT)
+  avatar                    String?
+  title                     String?
+  bio                       String?
+  onboardingCompletedAt     DateTime?
+  cocAcceptedAt             DateTime?
+  emailVerifiedAt           DateTime?
+  verificationCodeHash      String?
+  verificationCodeExpiresAt DateTime?
+  passwordResetCodeHash     String?
+  passwordResetCodeExpiresAt DateTime?
+  notificationPrefs         Json?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
+
+  teamMemberships TeamMember[]
+  mentoredTeams   Team[]          @relation("TeamMentor")
+  teamMentorships TeamMentor[]
+  submissions     Submission[]    @relation("SubmissionAuthor")
+  scores          Score[]
+  announcements   Announcement[]
+  assignedTasks   Task[]          @relation("TaskAssignee")
+  chatMessages    ChatMessage[]
+  chatReactions   ChatReaction[]
+  notifications   Notification[]
+  workspaceDocs   WorkspaceDoc[]  @relation("WorkspaceEditor")
+  responsibilities TeamResponsibility[]
+  taskComments    TaskComment[]
+
+  @@index([role])
+  @@map("users")
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  progress    Int      @default(0)
+  locked      Boolean  @default(false)
+  mentorId    String?
+  challengeId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  mentor        User?          @relation("TeamMentor", fields: [mentorId], references: [id], onDelete: SetNull)
+  challenge     Challenge?     @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+  members       TeamMember[]
+  mentors       TeamMentor[]
+  submissions   Submission[]
+  tasks         Task[]
+  chatMessages  ChatMessage[]
+  workspaceDocs WorkspaceDoc[]
+  responsibilities TeamResponsibility[]
+
+  @@index([challengeId])
+  @@index([mentorId])
+  @@map("teams")
+}
+
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String
+  role     TeamRole @default(MEMBER)
+  title    String?
+  online   Boolean  @default(false)
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@map("team_members")
+}
+
+model TeamMentor {
+  id       String   @id @default(cuid())
+  teamId   String
+  mentorId String
+  createdAt DateTime @default(now())
+
+  team   Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  mentor User @relation(fields: [mentorId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, mentorId])
+  @@map("team_mentors")
+}
+
+model Challenge {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  title     String
+  track     String
+  category  String
+  summary   String
+  problem   String
+  featured  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  teams       Team[]
+  submissions Submission[]
+
+  @@index([track])
+  @@index([category])
+  @@map("challenges")
+}
+
+model Submission {
+  id           String           @id @default(cuid())
+  teamId       String
+  challengeId  String
+  authorId     String?
+  title        String
+  description  String?
+  repoUrl      String?
+  demoUrl      String?
+  deckUrl      String?
+  slidesUrl    String?
+  videoUrl     String?
+  docsUrl      String?
+  prototypeUrl String?
+  zipUrl       String?
+  status       SubmissionStatus @default(DRAFT)
+  submittedAt  DateTime?
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Restrict)
+  author    User?     @relation("SubmissionAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  scores    Score[]
+
+  @@index([teamId])
+  @@index([challengeId])
+  @@index([status])
+  @@map("submissions")
+}
+
+model Score {
+  id                    String   @id @default(cuid())
+  submissionId          String
+  judgeId               String
+  solutionDevelopment   Int
+  challengeRequirements Int
+  presentation          Int
+  communication         Int
+  total                 Int
+  notes                 String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  judge      User       @relation(fields: [judgeId], references: [id], onDelete: Cascade)
+
+  @@unique([submissionId, judgeId])
+  @@index([judgeId])
+  @@map("scores")
+}
+
+model Announcement {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  type      String   @default("update")
+  pinned    Boolean  @default(false)
+  authorId  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
+
+  @@index([pinned, createdAt])
+  @@map("announcements")
+}
+
+model Faq {
+  id        String   @id @default(cuid())
+  question  String
+  answer    String
+  sortOrder Int      @default(0)
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([published, sortOrder])
+  @@map("faqs")
+}
+
+model Task {
+  id             String     @id @default(cuid())
+  teamId         String
+  title          String
+  column         TaskColumn @default(todo)
+  priority       String     @default("Medium")
+  dueDate        String?
+  comments       Int        @default(0)
+  attachments    Int        @default(0)
+  attachmentUrls Json       @default("[]")
+  sortOrder      Int        @default(0)
+  assigneeId     String?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  team          Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  assignee      User?         @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  taskComments  TaskComment[]
+
+  @@index([teamId, column])
+  @@map("tasks")
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([taskId, createdAt])
+  @@map("task_comments")
+}
+
+model TeamResponsibility {
+  id        String   @id @default(cuid())
+  teamId    String
+  label     String
+  userId    String?
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  team Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([teamId, label])
+  @@index([teamId])
+  @@map("team_responsibilities")
+}
+
+model WorkspaceDoc {
+  id          String   @id @default(cuid())
+  teamId      String
+  sectionId   String
+  title       String
+  content     String   @default("")
+  updatedById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  team      Team  @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  updatedBy User? @relation("WorkspaceEditor", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@unique([teamId, sectionId])
+  @@map("workspace_docs")
+}
+
+model ChatMessage {
+  id              String      @id @default(cuid())
+  teamId          String
+  channel         ChatChannel @default(team)
+  authorId        String
+  body            String
+  deletedAt       DateTime?
+  forwardedFromId String?
+  createdAt       DateTime    @default(now())
+
+  team          Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  forwardedFrom ChatMessage?   @relation("ChatForward", fields: [forwardedFromId], references: [id], onDelete: SetNull)
+  forwards      ChatMessage[]  @relation("ChatForward")
+  reactions     ChatReaction[]
+
+  @@index([teamId, channel, createdAt])
+  @@map("chat_messages")
+}
+
+model ChatReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  message ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@map("chat_reactions")
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  category  String    @default("announcement")
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+model ProgrammeMeta {
+  id          String   @id @default("default")
+  name        String
+  theme       String
+  venue       String
+  startDate   DateTime
+  endDate     DateTime
+  welcomeLine String
+  updatedAt   DateTime @updatedAt
+
+  @@map("programme_meta")
+}
