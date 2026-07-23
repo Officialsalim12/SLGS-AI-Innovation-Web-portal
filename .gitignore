@@ -8,3 +8,4 @@ dist/
 backend/uploads/
 *.pem
 .turbo/
+.vercel/
