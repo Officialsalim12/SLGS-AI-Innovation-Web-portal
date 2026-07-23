@@ -73,7 +73,7 @@ export default function AdminTeamsPage() {
       return;
     }
     setMemberIds(selectedTeam.members.map((m) => m.id));
-  }, [selectedTeamId, selectedTeam?.id]);
+  }, [selectedTeam]);
 
   const assignedElsewhere = useMemo(() => {
     const map = new Map<string, string>();

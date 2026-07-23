@@ -271,7 +271,7 @@ export default function LeaderboardPage() {
                 </p>
               </div>
               <div className="divide-y divide-line">
-                {(rest.length ? rest : rows).map((row, i) => (
+                {(rest.length ? rest : rows).map((row) => (
                   <button
                     key={row.teamId || row.team}
                     type="button"

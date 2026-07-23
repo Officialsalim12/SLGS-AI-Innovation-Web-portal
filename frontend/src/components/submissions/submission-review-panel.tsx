@@ -129,7 +129,7 @@ export function SubmissionReviewPanel({
     if (!item) return;
     setBreakdown(item.breakdown || emptyScoreBreakdown());
     setComment(item.scoreNotes || "");
-  }, [item?.id]);
+  }, [item]);
 
   const scoreTotal = totalFromBreakdown(breakdown);
 
