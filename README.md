@@ -53,7 +53,7 @@ NODE_ENV=development
 PORT=4000
 
 BREVO_API_KEY=
-BREVO_SENDER_EMAIL=salim@kns.sl
+BREVO_SENDER_EMAIL=
 BREVO_SENDER_NAME=KNS and SLGS AI Innovation Bootcamp & Challenge
 ```
 
@@ -143,6 +143,4 @@ Private for this programme. Ask before sharing the repo.
 
 KNS · partner SLGS
 
-- Email: salim@kns.sl
-- WhatsApp: +232 79 594 218
-- Address: 18 Dundas Street, Freetown, Sierra Leone
+Use the contact details on the live site (Need help section), not in this README.
