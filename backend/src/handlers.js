@@ -2360,6 +2360,34 @@ async function handleMentors(req, res) {
   });
 }
 
+/** Public mentor directory — profile fields only, no emails. */
+async function handlePublicMentors(_req, res) {
+  const mentors = await prisma.user.findMany({
+    where: {
+      role: "MENTOR",
+      emailVerifiedAt: { not: null },
+    },
+    orderBy: { name: "asc" },
+    select: {
+      id: true,
+      name: true,
+      title: true,
+      bio: true,
+      avatar: true,
+    },
+  });
+
+  send(res, 200, {
+    mentors: mentors.map((m) => ({
+      id: m.id,
+      name: m.name,
+      title: m.title || "Programme Mentor",
+      bio: m.bio || null,
+      avatar: m.avatar || null,
+    })),
+  });
+}
+
 module.exports = {
   send,
   requireUser,
@@ -2407,5 +2435,6 @@ module.exports = {
   handleSetTeamMembers,
   handleAssignMentors,
   handleMentors,
+  handlePublicMentors,
   EVENT,
 };

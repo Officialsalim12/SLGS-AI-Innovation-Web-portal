@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
-import { BrandLogo, BrandMark, BRAND_NAME } from "@/components/brand-logo";
+import { BrandLogo, BrandMark } from "@/components/brand-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { useTheme } from "@/components/theme-provider";
 import { cn } from "@/lib/utils";
@@ -67,12 +67,9 @@ export function AuthShell({
           />
 
           <div className="relative z-10">
-            <Link href="/" className="inline-flex items-center gap-3">
-              <span className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/95 p-1.5 shadow-lg shadow-black/20">
-                <BrandLogo size={40} priority />
-              </span>
-              <span className="font-display max-w-[14rem] text-[15px] font-semibold leading-snug text-white">
-                {BRAND_NAME}
+            <Link href="/" className="inline-flex items-center">
+              <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-white/95 p-2 shadow-lg shadow-black/20">
+                <BrandLogo size={52} priority />
               </span>
             </Link>
           </div>
@@ -128,12 +125,7 @@ export function AuthShell({
 
           <header className="relative z-10 flex items-center justify-between gap-3 px-5 py-5 sm:px-8 lg:px-10 lg:py-7">
             <Link href="/" className="min-w-0 lg:invisible lg:pointer-events-none">
-              <BrandMark
-                size={34}
-                priority
-                light={theme === "light"}
-                nameClassName="text-[12px] max-w-[150px] leading-snug sm:text-[13px] sm:max-w-[190px]"
-              />
+              <BrandMark size={52} priority light={theme === "light"} />
             </Link>
             <div className="flex items-center gap-2">
               <Link

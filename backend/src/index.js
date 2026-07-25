@@ -789,6 +789,11 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (path === "/api/public/mentors" && req.method === "GET") {
+      await api.handlePublicMentors(req, res);
+      return;
+    }
+
     if (path === "/api/mentors/assign" && req.method === "POST") {
       const body = await readBody(req);
       await api.handleAssignMentors(req, res, body);

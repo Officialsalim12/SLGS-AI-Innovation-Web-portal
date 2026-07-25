@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 export const marketingNav = [
   { href: "/challenges", label: "Challenges" },
   { href: "/timeline", label: "Timeline" },
+  { href: "/mentors", label: "Mentors" },
   { href: "/grading", label: "Grading" },
   { href: "/faq", label: "FAQ" },
   { href: "/platform", label: "Tools" },
@@ -55,12 +56,7 @@ export function SiteHeader() {
             className="flex min-w-0 items-center"
             onClick={() => setMenuOpen(false)}
           >
-            <BrandMark
-              size={40}
-              priority
-              light={theme === "light"}
-              nameClassName="hidden min-[400px]:inline text-[12px] max-w-[140px] leading-snug sm:text-[13px] sm:max-w-[180px]"
-            />
+            <BrandMark size={56} priority light={theme === "light"} />
           </Link>
           <div className="flex shrink-0 items-center gap-2">
             <ThemeToggle />
@@ -133,12 +129,7 @@ export function SiteHeader() {
             className="flex min-w-0 items-center"
             onClick={() => setMenuOpen(false)}
           >
-            <BrandMark
-              size={40}
-              priority
-              light={theme === "light"}
-              nameClassName="hidden min-[400px]:inline text-[12px] max-w-[140px] leading-snug sm:text-[13px] sm:max-w-[180px]"
-            />
+            <BrandMark size={56} priority light={theme === "light"} />
           </Link>
           <div className="hidden items-center gap-6 xl:gap-7 lg:flex">
             {marketingNav.map((item) => (

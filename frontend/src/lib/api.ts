@@ -570,6 +570,17 @@ export const api = {
       }>;
     }>("/api/mentors"),
 
+  publicMentors: () =>
+    request<{
+      mentors: Array<{
+        id: string;
+        name: string;
+        title: string;
+        bio: string | null;
+        avatar: string | null;
+      }>;
+    }>("/api/public/mentors", { auth: false }),
+
   assignMentors: (body: { mentorId: string; teamIds: string[] }) =>
     request("/api/mentors/assign", {
       method: "POST",

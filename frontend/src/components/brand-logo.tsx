@@ -25,10 +25,10 @@ export function BrandLogo({
 }
 
 export function BrandMark({
-  size = 40,
+  size = 52,
   priority = false,
   stacked = false,
-  showName = true,
+  showName = false,
   light = false,
   className,
   nameClassName,

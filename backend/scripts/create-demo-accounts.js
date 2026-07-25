@@ -40,6 +40,7 @@ async function main() {
       role: "MENTOR",
       emailVerifiedAt: now,
       title: "Programme Mentor",
+      bio: "Helps assigned teams during the build weeks with product choices, tech decisions, and Demo Day prep.",
       verificationCodeHash: null,
       verificationCodeExpiresAt: null,
     },
@@ -50,6 +51,7 @@ async function main() {
       role: "MENTOR",
       emailVerifiedAt: now,
       title: "Programme Mentor",
+      bio: "Helps assigned teams during the build weeks with product choices, tech decisions, and Demo Day prep.",
     },
   });
 

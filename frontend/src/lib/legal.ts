@@ -124,7 +124,7 @@ export const termsOfUse: {
       bullets: [
         "Treat other Users, mentors, judges, and organisers with respect",
         "Submit only original work; plagiarism or misrepresentation of authorship will result in disqualification",
-        "Build from their own ideas where allowed, but not submit an existing solution or old project as new work",
+        "Build from a listed problem statement or their own idea for a Sierra Leone problem, but not submit an existing solution or old project as new work",
         "Refrain from posting offensive, discriminatory, or harmful content in chats, workspaces, or submissions",
         "Not attempt to hack, disrupt, or misuse the Site or its data",
         "Not use the platform to collect or misuse another User's personal information",

@@ -7,6 +7,7 @@ const columns = [
     links: [
       { href: "/challenges", label: "Challenges" },
       { href: "/timeline", label: "Timeline" },
+      { href: "/mentors", label: "Mentors" },
       { href: "/grading", label: "Grading" },
       { href: "/faq", label: "FAQ" },
     ],
@@ -44,7 +45,7 @@ export function SiteFooter() {
       <div className="relative mx-auto max-w-6xl px-4 py-12 sm:px-6 sm:py-16">
         <div className="grid gap-10 md:grid-cols-[1.2fr_2fr] md:gap-12">
           <div className="min-w-0">
-            <BrandMark size={48} nameClassName="text-sm text-white max-w-[200px]" />
+            <BrandMark size={64} />
             <p className="mt-5 max-w-xs text-sm leading-relaxed text-white/55">
               Facilitated by KNS in partnership with Sierra Leone Grammar
               School. Selected students, mentors, and real Sierra Leone

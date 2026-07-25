@@ -172,10 +172,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="portal-atmosphere flex min-h-dvh min-w-0 overflow-x-hidden bg-canvas text-fg">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[17rem] flex-col border-r border-line/80 bg-shell-elevated/80 shadow-[8px_0_40px_-28px_rgba(15,23,42,0.35)] backdrop-blur-2xl lg:flex">
         <div className="flex h-[4.25rem] items-center border-b border-line/80 px-4">
-          <BrandMark
-            size={36}
-            nameClassName="text-[12px] max-w-[11.5rem] leading-snug sm:text-[13px]"
-          />
+          <BrandMark size={48} />
         </div>
         <nav className="flex-1 space-y-1 overflow-y-auto p-3 scrollbar-thin">
           {nav.map((item) => (

@@ -35,10 +35,10 @@ const criteria = [
     name: "Meeting Challenge Requirements",
     weight: 25,
     summary:
-      "Did the team pick a real challenge and build something that answers it?",
+      "Did the team pick a real Sierra Leone problem, from the list or their own idea, and build something that answers it?",
     icon: Target,
     details: [
-      "Does it tackle the assigned challenge?",
+      "Does it tackle a listed challenge or a clear own idea?",
       "Are the required deliverables in place?",
       "Would this help a real person with a real problem?",
       "Do the builders understand the problem they chose?",
@@ -104,7 +104,7 @@ const scoreBands = [
   {
     range: "70 to 79",
     label: "Good",
-    description: "Works, shows real effort, and addresses the challenge.",
+    description: "Works, shows real effort, and addresses a real problem.",
   },
   {
     range: "60 to 69",
@@ -114,12 +114,13 @@ const scoreBands = [
   {
     range: "Below 60",
     label: "Needs work",
-    description: "Big gaps in the build, the challenge fit, or the pitch.",
+    description: "Big gaps in the build, the problem fit, or the pitch.",
   },
 ] as const;
 
 const notes = [
   "Work must be your team's own. Don't submit someone else's project.",
+  "You may pick a listed problem or bring your own Sierra Leone idea.",
   "Follow the programme rules and hit the deadlines.",
   "Judges' decisions are final.",
   "Late submissions can lose points or be ruled out.",

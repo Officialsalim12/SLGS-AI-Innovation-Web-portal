@@ -11,7 +11,7 @@ export const scoringCriteria = [
     name: "Meeting Challenge Requirements",
     weight: 25,
     summary:
-      "Did the team pick a real challenge and build something that answers it?",
+      "Did the team pick a real Sierra Leone problem, from the list or their own idea, and build something that answers it?",
   },
   {
     key: "presentation" as const,

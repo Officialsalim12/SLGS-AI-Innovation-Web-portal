@@ -27,23 +27,18 @@ export default function LandingPage() {
             transition={{ duration: 0.55 }}
             className="min-w-0"
           >
-            <div className="max-w-xl overflow-hidden rounded-xl border border-line bg-card/90 shadow-[0_1px_0_rgba(15,23,42,0.04)] backdrop-blur-sm">
-              <div className="flex">
-                <div className="w-1 shrink-0 bg-brand" aria-hidden />
-                <div className="min-w-0 flex-1 px-4 py-3 sm:px-5 sm:py-3.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-fg/45 sm:text-[11px]">
-                    Facilitated by KNS · Partner SLGS
-                  </p>
-                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                    <p className="font-display text-sm font-semibold leading-snug text-fg sm:text-[15px]">
-                      AI Innovation Bootcamp &amp; Challenge
-                    </p>
-                    <span className="inline-flex items-center rounded-md bg-brand px-2 py-0.5 text-[10px] font-bold tracking-wide text-white sm:text-[11px] dark:text-navy">
-                      2026
-                    </span>
-                  </div>
-                </div>
-              </div>
+            <div className="max-w-xl border-l-2 border-brand pl-4 sm:pl-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-brand">
+                2026 Programme
+              </p>
+              <p className="font-display mt-1.5 text-lg font-semibold leading-snug text-fg sm:text-xl">
+                AI Innovation Bootcamp &amp; Challenge
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-fg/55">
+                Facilitated by <span className="font-semibold text-fg/75">KNS</span>{" "}
+                in partnership with{" "}
+                <span className="font-semibold text-fg/75">SLGS</span>
+              </p>
             </div>
             <h1 className="font-display mt-4 text-[1.75rem] font-bold leading-tight tracking-tight text-fg sm:mt-5 sm:text-4xl sm:leading-tight md:text-[3rem] md:leading-[1.1] lg:text-[3.25rem]">
               Build a real app. Solve a Sierra Leone problem.
@@ -68,7 +63,7 @@ export default function LandingPage() {
                 href="/challenges"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-line-strong bg-card/80 px-6 py-3.5 text-center text-[15px] font-semibold text-fg backdrop-blur-sm transition hover:border-brand/40 hover:bg-card sm:w-auto"
               >
-                See the problem statements
+                See problem ideas
               </Link>
             </div>
           </motion.div>

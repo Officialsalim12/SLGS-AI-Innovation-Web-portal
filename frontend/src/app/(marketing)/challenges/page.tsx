@@ -2,16 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { challenges } from "@/lib/data";
+import { challengeTracks, challenges } from "@/lib/data";
 import { cn } from "@/lib/utils";
 import { MarketingCard, PageIntro } from "@/components/marketing/page-chrome";
 
-const categories = [
-  "All",
-  ...Array.from(new Set(challenges.map((c) => c.track))).sort((a, b) =>
-    a.localeCompare(b)
-  ),
-];
+const categories = ["All", ...challengeTracks.map((t) => t.name)];
 
 export default function ChallengesPage() {
   const [active, setActive] = useState("All");
@@ -24,14 +19,31 @@ export default function ChallengesPage() {
     [active]
   );
 
+  const activeTrack =
+    active === "All"
+      ? null
+      : challengeTracks.find((t) => t.name === active) || null;
+
   return (
     <div className="overflow-x-hidden pb-16 pt-8 sm:pb-20 sm:pt-12 md:pb-28 md:pt-16">
       <div className="mx-auto max-w-3xl space-y-8 px-4 sm:space-y-10 sm:px-6">
         <PageIntro
           title="Problem statements"
-          description="Read these with your group. Pick one Sierra Leone problem to solve."
+          description="These are starter problems you can pick from. Your team can also bring your own idea for a Sierra Leone problem and build that instead."
           align="left"
         />
+
+        <MarketingCard className="p-4 sm:p-5" hover={false}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
+            Your own idea is welcome
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-fg/65 sm:text-[15px]">
+            You do not have to choose from this list. If your team has a strong
+            idea that helps people in Sierra Leone, work on that. The project
+            must be new work for this programme, not an old or existing
+            solution.
+          </p>
+        </MarketingCard>
 
         <div className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -83,6 +95,11 @@ export default function ChallengesPage() {
               );
             })}
           </div>
+          {activeTrack && (
+            <p className="text-sm leading-relaxed text-fg/55">
+              {activeTrack.description}
+            </p>
+          )}
         </div>
 
         <AnimatePresence mode="wait">
@@ -106,7 +123,7 @@ export default function ChallengesPage() {
                 <MarketingCard className="p-4 sm:p-6 md:p-7">
                   <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                     <span className="font-display text-sm font-bold text-brand/50">
-                      {String(i + 1).padStart(2, "0")}
+                      {idea.code}
                     </span>
                     <h2 className="font-display text-lg font-bold text-fg sm:text-xl">
                       {idea.title}
@@ -121,9 +138,9 @@ export default function ChallengesPage() {
                   <div className="mt-3 rounded-xl border border-line bg-canvas/70 px-3 py-3 sm:mt-4 sm:px-4">
                     <p className="text-sm leading-relaxed text-fg sm:text-base">
                       <span className="font-semibold text-brand">
-                        The Problem:{" "}
+                        What to build:{" "}
                       </span>
-                      {idea.problem}
+                      {idea.direction}
                     </p>
                   </div>
                 </MarketingCard>
