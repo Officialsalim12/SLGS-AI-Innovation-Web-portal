@@ -915,7 +915,7 @@ What drives him is building things that last: solutions that create opportunitie
     id: "samuel-olu-gibson",
     name: "Samuel Olu Gibson",
     title: "Project Support Engineer & IT Trainer",
-    photo: "/images/brand/samuel-olu-gibson.webp",
+    photo: "/images/brand/samuel-olu-gibson.jpeg",
     focus: [
       "Project management",
       "Technical documentation",
