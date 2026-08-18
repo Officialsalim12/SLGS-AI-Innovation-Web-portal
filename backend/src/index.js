@@ -769,6 +769,32 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    const adminParticipantMoveMatch = path.match(
+      /^\/api\/admin\/participants\/([^/]+)\/move$/
+    );
+    if (adminParticipantMoveMatch && req.method === "POST") {
+      const body = await readBody(req);
+      await api.handleAdminMoveParticipant(
+        req,
+        res,
+        adminParticipantMoveMatch[1],
+        body
+      );
+      return;
+    }
+
+    const adminParticipantMatch = path.match(
+      /^\/api\/admin\/participants\/([^/]+)$/
+    );
+    if (adminParticipantMatch && req.method === "DELETE") {
+      await api.handleAdminDeleteParticipant(
+        req,
+        res,
+        adminParticipantMatch[1]
+      );
+      return;
+    }
+
     const adminMentorMatch = path.match(/^\/api\/admin\/mentors\/([^/]+)$/);
     if (adminMentorMatch && req.method === "DELETE") {
       await api.handleAdminDeleteMentor(req, res, adminMentorMatch[1]);

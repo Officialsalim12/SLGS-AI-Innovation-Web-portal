@@ -511,9 +511,26 @@ export const api = {
         email: string;
         title?: string | null;
         team: string;
+        teamId: string | null;
         online: boolean;
       }>;
     }>("/api/admin/participants"),
+
+  moveParticipant: (id: string, teamId: string | null) =>
+    request<{
+      ok: boolean;
+      id: string;
+      teamId: string | null;
+      team: string;
+    }>(`/api/admin/participants/${id}/move`, {
+      method: "POST",
+      body: JSON.stringify({ teamId }),
+    }),
+
+  deleteParticipant: (id: string) =>
+    request<{ ok: boolean; id: string }>(`/api/admin/participants/${id}`, {
+      method: "DELETE",
+    }),
 
   deleteMentor: (id: string) =>
     request<{ ok: boolean; id: string }>(`/api/admin/mentors/${id}`, {

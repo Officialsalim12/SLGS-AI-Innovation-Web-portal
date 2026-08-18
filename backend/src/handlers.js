@@ -1851,6 +1851,7 @@ async function handleAdminParticipants(req, res) {
       email: u.email,
       title: u.title,
       team: u.teamMemberships[0]?.team.name || "Unassigned",
+      teamId: u.teamMemberships[0]?.team.id || null,
       online: false,
     })),
   });
@@ -1878,6 +1879,122 @@ async function handleAdminDeleteMentor(req, res, mentorId) {
     data: { mentorId: null },
   });
   await prisma.user.delete({ where: { id: target.id } });
+  send(res, 200, { ok: true, id: target.id });
+}
+
+async function handleAdminMoveParticipant(req, res, participantId, body) {
+  const user = await requireUser(req);
+  if (!user) return send(res, 401, { error: "Sign in required." });
+  if (user.role !== "ADMIN") return send(res, 403, { error: "Admins only." });
+
+  const id = String(participantId || "").trim();
+  if (!id) return send(res, 400, { error: "Participant id is required." });
+
+  const target = await prisma.user.findUnique({
+    where: { id },
+    include: { teamMemberships: { include: { team: true } } },
+  });
+  if (!target || target.role !== "PARTICIPANT") {
+    return send(res, 404, { error: "Participant not found." });
+  }
+
+  const currentTeam = target.teamMemberships[0]?.team || null;
+  const rawTeamId = body.teamId;
+  const nextTeamId =
+    rawTeamId === null || rawTeamId === undefined || rawTeamId === ""
+      ? null
+      : String(rawTeamId).trim();
+
+  if (!nextTeamId) {
+    if (!currentTeam) {
+      return send(res, 400, { error: "This participant is not on a team." });
+    }
+    if (currentTeam.locked) {
+      return send(res, 400, {
+        error: "Unlock teams before removing members.",
+      });
+    }
+    await prisma.teamMember.deleteMany({ where: { userId: target.id } });
+    return send(res, 200, {
+      ok: true,
+      id: target.id,
+      teamId: null,
+      team: "Unassigned",
+    });
+  }
+
+  if (currentTeam?.id === nextTeamId) {
+    return send(res, 400, {
+      error: "This participant is already on that team.",
+    });
+  }
+
+  const nextTeam = await prisma.team.findUnique({
+    where: { id: nextTeamId },
+    include: { members: true },
+  });
+  if (!nextTeam) return send(res, 404, { error: "Team not found." });
+  if (nextTeam.locked || currentTeam?.locked) {
+    return send(res, 400, { error: "Unlock teams before moving members." });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.teamMember.deleteMany({ where: { userId: target.id } });
+    await tx.teamMember.create({
+      data: {
+        teamId: nextTeam.id,
+        userId: target.id,
+        role: nextTeam.members.length === 0 ? "LEAD" : "MEMBER",
+      },
+    });
+  });
+
+  send(res, 200, {
+    ok: true,
+    id: target.id,
+    teamId: nextTeam.id,
+    team: nextTeam.name,
+  });
+}
+
+async function handleAdminDeleteParticipant(req, res, participantId) {
+  const user = await requireUser(req);
+  if (!user) return send(res, 401, { error: "Sign in required." });
+  if (user.role !== "ADMIN") return send(res, 403, { error: "Admins only." });
+
+  const id = String(participantId || "").trim();
+  if (!id) return send(res, 400, { error: "Participant id is required." });
+
+  const target = await prisma.user.findUnique({ where: { id } });
+  if (!target || target.role !== "PARTICIPANT") {
+    return send(res, 404, { error: "Participant not found." });
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.teamMember.deleteMany({ where: { userId: target.id } });
+    await tx.teamResponsibility.updateMany({
+      where: { userId: target.id },
+      data: { userId: null },
+    });
+    await tx.task.updateMany({
+      where: { assigneeId: target.id },
+      data: { assigneeId: null },
+    });
+    await tx.notification.deleteMany({ where: { userId: target.id } });
+    await tx.taskComment.deleteMany({ where: { authorId: target.id } });
+    await tx.chatMessage.deleteMany({ where: { authorId: target.id } });
+    await tx.submission.updateMany({
+      where: { authorId: target.id },
+      data: { authorId: null },
+    });
+    await tx.workspaceDoc.updateMany({
+      where: { updatedById: target.id },
+      data: { updatedById: null },
+    });
+    await tx.score.deleteMany({ where: { judgeId: target.id } });
+    await tx.user.delete({ where: { id: target.id } });
+  });
+
   send(res, 200, { ok: true, id: target.id });
 }
 
@@ -2426,6 +2543,8 @@ module.exports = {
   handleSaveSubmission,
   handleAdminOverview,
   handleAdminParticipants,
+  handleAdminMoveParticipant,
+  handleAdminDeleteParticipant,
   handleAdminDeleteMentor,
   handleAdminSubmissions,
   handleAdminUpdateSubmission,

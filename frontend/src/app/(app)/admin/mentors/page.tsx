@@ -13,15 +13,30 @@ import { toast } from "@/components/ui/toast";
 type Mentor = Awaited<ReturnType<typeof api.mentors>>["mentors"][number];
 type TeamRow = Awaited<ReturnType<typeof api.teams>>["teams"][number];
 
+const selectClass =
+  "h-9 min-w-[10rem] rounded-xl border border-line bg-input px-3 text-sm text-fg outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/20 disabled:opacity-60";
+
 export default function AdminMentorsPage() {
   const [mentors, setMentors] = useState<Mentor[]>([]);
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [selectedMentor, setSelectedMentor] = useState("");
-  const [assignments, setAssignments] = useState<Record<string, string[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [addTeamId, setAddTeamId] = useState("");
+  const [transferTeamId, setTransferTeamId] = useState("");
+
+  async function loadMentors(preferId?: string) {
+    const mentorsRes = await api.mentors();
+    setMentors(mentorsRes.mentors);
+    const nextId =
+      preferId && mentorsRes.mentors.some((m) => m.id === preferId)
+        ? preferId
+        : mentorsRes.mentors[0]?.id || "";
+    setSelectedMentor(nextId);
+    return mentorsRes.mentors;
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -34,11 +49,6 @@ export default function AdminMentorsPage() {
         if (cancelled) return;
         setMentors(mentorsRes.mentors);
         setTeams(teamsRes.teams);
-        const map: Record<string, string[]> = {};
-        for (const m of mentorsRes.mentors) {
-          map[m.id] = [...m.teamIds];
-        }
-        setAssignments(map);
         if (mentorsRes.mentors[0]) setSelectedMentor(mentorsRes.mentors[0].id);
       } catch (err) {
         if (!cancelled) {
@@ -56,42 +66,52 @@ export default function AdminMentorsPage() {
   }, []);
 
   const mentor = mentors.find((m) => m.id === selectedMentor);
-  const selectedTeams = assignments[selectedMentor] || [];
+  const assignedIds = mentor?.teamIds || [];
+  const unassignedTeams = teams.filter((t) => !assignedIds.includes(t.id));
 
-  function toggleTeam(teamId: string) {
-    setAssignments((prev) => {
-      const current = prev[selectedMentor] || [];
-      const next = current.includes(teamId)
-        ? current.filter((t) => t !== teamId)
-        : [...current, teamId];
-      return { ...prev, [selectedMentor]: next };
-    });
-  }
-
-  async function save() {
+  async function setAssignments(teamIds: string[], success: string) {
     if (!mentor || saving) return;
     setSaving(true);
     try {
-      await api.assignMentors({
-        mentorId: mentor.id,
-        teamIds: assignments[mentor.id] || [],
-      });
-      const mentorsRes = await api.mentors();
-      setMentors(mentorsRes.mentors);
-      const map: Record<string, string[]> = {};
-      for (const m of mentorsRes.mentors) {
-        map[m.id] = [...m.teamIds];
-      }
-      setAssignments(map);
-      toast(`Saved assignments for ${mentor.name}`, "success");
+      await api.assignMentors({ mentorId: mentor.id, teamIds });
+      await loadMentors(mentor.id);
+      setAddTeamId("");
+      setTransferTeamId("");
+      toast(success, "success");
     } catch (err) {
       toast(
-        err instanceof Error ? err.message : "Could not save assignments",
+        err instanceof Error ? err.message : "Could not update assignments",
         "error"
       );
     } finally {
       setSaving(false);
     }
+  }
+
+  function removeFromTeam(teamId: string) {
+    const teamName = teams.find((t) => t.id === teamId)?.name || "team";
+    void setAssignments(
+      assignedIds.filter((id) => id !== teamId),
+      `${mentor?.name} removed from ${teamName}`
+    );
+  }
+
+  function addToTeam() {
+    if (!addTeamId) return;
+    const teamName = teams.find((t) => t.id === addTeamId)?.name || "team";
+    void setAssignments(
+      [...assignedIds, addTeamId],
+      `${mentor?.name} added to ${teamName}`
+    );
+  }
+
+  function transferToTeam() {
+    if (!transferTeamId) return;
+    const teamName = teams.find((t) => t.id === transferTeamId)?.name || "team";
+    void setAssignments(
+      [transferTeamId],
+      `${mentor?.name} transferred to ${teamName}`
+    );
   }
 
   async function removeMentor() {
@@ -106,12 +126,9 @@ export default function AdminMentorsPage() {
       await api.deleteMentor(mentor.id);
       const nextList = mentors.filter((m) => m.id !== mentor.id);
       setMentors(nextList);
-      setAssignments((prev) => {
-        const copy = { ...prev };
-        delete copy[mentor.id];
-        return copy;
-      });
       setSelectedMentor(nextList[0]?.id || "");
+      setAddTeamId("");
+      setTransferTeamId("");
       toast(`${mentor.name} deleted`, "success");
     } catch (err) {
       toast(
@@ -139,7 +156,7 @@ export default function AdminMentorsPage() {
     <div className="space-y-6">
       <PortalPageHeader
         title="Assign Mentors"
-        description="Mentors register their own accounts. Select a mentor here, choose teams, then save."
+        description="Remove a mentor from a team, transfer them to another team, or delete their account."
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] lg:gap-6">
@@ -156,7 +173,11 @@ export default function AdminMentorsPage() {
               <button
                 key={m.id}
                 type="button"
-                onClick={() => setSelectedMentor(m.id)}
+                onClick={() => {
+                  setSelectedMentor(m.id);
+                  setAddTeamId("");
+                  setTransferTeamId("");
+                }}
                 className={cn(
                   "shrink-0 rounded-xl px-3 py-2.5 text-left text-sm lg:w-full",
                   selectedMentor === m.id
@@ -198,27 +219,96 @@ export default function AdminMentorsPage() {
                 Assigned Teams
               </p>
               <div className="mt-3 space-y-2">
-                {teams.map((t) => {
-                  const checked = selectedTeams.includes(t.id);
+                {assignedIds.length === 0 && (
+                  <p className="rounded-xl bg-surface-muted px-4 py-3 text-sm text-fg-muted">
+                    Not assigned to a team yet.
+                  </p>
+                )}
+                {assignedIds.map((teamId) => {
+                  const team = teams.find((t) => t.id === teamId);
+                  if (!team) return null;
                   return (
-                    <label
-                      key={t.id}
-                      className="flex cursor-pointer items-center gap-3 rounded-xl bg-surface-muted px-4 py-3 text-sm text-fg"
+                    <div
+                      key={team.id}
+                      className="flex items-center justify-between gap-3 rounded-xl bg-surface-muted px-4 py-3 text-sm text-fg"
                     >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        onChange={() => toggleTeam(t.id)}
-                        className="h-4 w-4 accent-purple"
-                      />
-                      {t.name}
-                    </label>
+                      <span className="min-w-0 truncate">{team.name}</span>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={saving}
+                        onClick={() => removeFromTeam(team.id)}
+                      >
+                        Remove
+                      </Button>
+                    </div>
                   );
                 })}
               </div>
-              <Button className="mt-6" onClick={save} loading={saving}>
-                Save assignments
-              </Button>
+
+              <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-fg-subtle">
+                    Add to team
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <select
+                      value={addTeamId}
+                      disabled={saving || unassignedTeams.length === 0}
+                      onChange={(e) => setAddTeamId(e.target.value)}
+                      className={selectClass}
+                      aria-label="Add mentor to team"
+                    >
+                      <option value="">Choose team</option>
+                      {unassignedTeams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      size="sm"
+                      disabled={saving || !addTeamId}
+                      onClick={addToTeam}
+                    >
+                      Add
+                    </Button>
+                  </div>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-fg-subtle">
+                    Transfer to team
+                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                    <select
+                      value={transferTeamId}
+                      disabled={saving || teams.length === 0}
+                      onChange={(e) => setTransferTeamId(e.target.value)}
+                      className={selectClass}
+                      aria-label="Transfer mentor to team"
+                    >
+                      <option value="">Choose team</option>
+                      {teams.map((t) => (
+                        <option key={t.id} value={t.id}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      size="sm"
+                      disabled={
+                        saving ||
+                        !transferTeamId ||
+                        (assignedIds.length === 1 &&
+                          assignedIds[0] === transferTeamId)
+                      }
+                      onClick={transferToTeam}
+                    >
+                      Transfer
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </>
           ) : (
             <p className="text-sm text-fg-muted">
