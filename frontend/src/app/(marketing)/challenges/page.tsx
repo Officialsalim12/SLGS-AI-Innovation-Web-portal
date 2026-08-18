@@ -37,11 +37,11 @@ export default function ChallengesPage() {
 
         <MarketingCard className="p-4 sm:p-5" hover={false}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
-            Selected by teams
+            Select
           </p>
           <p className="mt-2 text-sm leading-relaxed text-fg/65 sm:text-[15px]">
-            Five problems below are marked as selected projects. These are the
-            ideas teams have chosen to build during the programme.
+            Five problems below are marked Select. These are the ideas teams
+            have chosen to build during the programme.
           </p>
         </MarketingCard>
 
@@ -147,7 +147,7 @@ export default function ChallengesPage() {
                     </h2>
                     {idea.selected && (
                       <span className="rounded-md bg-brand px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white dark:text-navy">
-                        Selected by teams
+                        Select
                       </span>
                     )}
                   </div>
