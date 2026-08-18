@@ -230,7 +230,7 @@ export const faqs = [
   },
   {
     q: "How do I use this site?",
-    a: "Browse the public pages for programme info, challenges, timeline, mentors, FAQ, and grading. When you have an account, open your portal and sign in: participants manage their team, workspace, kanban, chats, and project submission; mentors review assigned teams; administrators run the programme. Use announcements and notifications in the portal for official updates.",
+    a: "Browse the public pages for programme info, challenges, timeline, mentors and judges, FAQ, and grading. When you have an account, open your portal and sign in: participants manage their team, workspace, kanban, chats, and project submission; mentors review assigned teams; administrators run the programme. Use announcements and notifications in the portal for official updates.",
   },
   {
     q: "Who do I contact if I'm stuck?",
@@ -244,6 +244,7 @@ export type ChallengeIdea = {
   title: string;
   track: string;
   featured?: boolean;
+  selected?: boolean;
   summary: string;
   direction: string;
   category: string;
@@ -304,6 +305,71 @@ export const challengeTracks = [
 ] as const;
 
 export const challenges: ChallengeIdea[] = [
+  {
+    id: "homework-tracking",
+    code: "E6",
+    title: "Homework Tracking Software",
+    track: "Education",
+    category: "Education",
+    selected: true,
+    summary:
+      "Students often struggle to keep track of homework, deadlines, learning materials, and feedback from teachers. Teachers may also find it difficult to monitor which students have completed assignments and which students need additional support. At the same time, parents may have limited visibility into their children's academic progress and upcoming assignments. The lack of a centralized system connecting teachers, students, and parents can lead to missed deadlines, poor communication, and unnecessary academic stress.",
+    direction:
+      "Give teachers, students and parents one place for assignments, deadlines, materials, feedback and completion status.",
+    teams: 1,
+  },
+  {
+    id: "volunteer-connect",
+    code: "C6",
+    title: "VolunteerConnect",
+    track: "Civic",
+    category: "Civic",
+    selected: true,
+    summary:
+      "Many communities, organisations, and individuals are willing to volunteer their time and skills, but there is often no efficient way to connect volunteers with organisations and community projects that need their support. This can result in volunteer opportunities going unnoticed while organisations struggle to find suitable people to help with their activities. The absence of an organized platform for discovering, matching, and coordinating volunteer opportunities creates a gap between people who want to contribute and communities that need support.",
+    direction:
+      "Match volunteers with organisations and community projects by skills, location and availability.",
+    teams: 1,
+  },
+  {
+    id: "know-yu-bodi",
+    code: "H6",
+    title: "Know Yu Bodi",
+    track: "Health",
+    category: "Health",
+    selected: true,
+    summary:
+      "Many young people enter puberty without having access to clear, reliable, age-appropriate information about the physical, emotional, and social changes they are experiencing. Cultural barriers, embarrassment, misinformation, and limited access to trusted educational resources can make it difficult for young people to ask questions or understand what is happening to their bodies. This lack of accessible and trustworthy information can lead to confusion, fear, stigma, and unhealthy decisions.",
+    direction:
+      "Provide clear, age-appropriate puberty information that young people can trust and explore privately. Do not diagnose or replace health professionals.",
+    teams: 1,
+  },
+  {
+    id: "personal-skill-planner",
+    code: "J6",
+    title: "Personal Skill Planner",
+    track: "Jobs and Opportunities",
+    category: "Jobs and Opportunities",
+    selected: true,
+    summary:
+      "Many students and young people want to develop skills that will help them succeed academically and professionally, but they often lack a clear understanding of which skills they need, how to prioritize them, and how to track their progress. Without structured goals and a personalized development plan, learning can become inconsistent and difficult to measure. This makes it harder for young people to identify skill gaps, stay motivated, and prepare themselves for future education or employment opportunities.",
+    direction:
+      "Help students identify skill gaps, set goals and track a personal development plan.",
+    teams: 1,
+  },
+  {
+    id: "schools-administration-portal",
+    code: "E7",
+    title: "Schools Administration Portal (ADP)",
+    track: "Education",
+    category: "Education",
+    selected: true,
+    summary:
+      "Many schools rely on manual or disconnected processes to manage student records, attendance, academic information, communication, and administrative activities. This can make it difficult for administrators and teachers to access accurate information quickly and can create unnecessary paperwork, delays, and errors. Parents and students may also have limited access to important school information. The absence of a centralized digital administration system can reduce efficiency and make it harder for schools to effectively manage their day-to-day operations.",
+    direction:
+      "Give schools one digital place for student records, attendance, academics, communication and day-to-day administration.",
+    teams: 1,
+  },
   {
     id: "a1",
     code: "A1",
@@ -893,11 +959,21 @@ export const challenges: ChallengeIdea[] = [
 
 export const featuredChallenges = challenges.filter((c) => c.featured);
 
-export const programmeMentors = [
+export type ProgrammeProfile = {
+  id: string;
+  name: string;
+  title: string;
+  photo: string;
+  photoPosition?: string;
+  focus: string[];
+  bio: string;
+};
+
+export const programmeMentors: ProgrammeProfile[] = [
   {
     id: "abdul-salim-gani",
     name: "Abdul Salim Gani",
-    title: "Software Lead, KNS",
+    title: "Software and Project Lead, KNS",
     photo: "/images/brand/abdul-salim-gani.webp",
     focus: [
       "Full-stack engineering",
@@ -905,11 +981,11 @@ export const programmeMentors = [
       "APIs & cloud",
       "AI integrations",
     ],
-    bio: `Abdul Salim Gani is a full-stack software engineer and Software Lead at KNS. He builds web and mobile products that solve real problems, working across frontend and backend to turn ideas into apps people actually use.
+    bio: `Abdul Salim Gani is a double bachelor's graduate from Cyprus West University, where he studied on a scholarship. He is a Software and Project Lead at Knowledge Network Solutions (KNS), working across software development, product delivery, and project leadership.
 
-Outside KNS, he collaborates with startups, entrepreneurs, and organizations to help bring ideas to life through technology. His work spans software architecture, APIs, databases, cloud solutions, AI integrations, and product development.
+He began in hospitality operations in Cyprus, then moved into technology as a freelance full-stack developer building web applications for companies. He has also competed in national and international hackathons, with teams that have won and reached finals. His technical work covers software architecture, APIs, databases, cloud, and AI integrations.
 
-What drives him is building things that last: solutions that create opportunities and leave a real impact. That same mindset sits behind DiscoverSalone, a project he is building to showcase Sierra Leone to the world while supporting local businesses, communities, and the country's digital transformation.`,
+What drives him is building solutions that last. That same vision sits behind DiscoverSalone, an initiative he is creating to showcase Sierra Leone while supporting local businesses, communities, tourism, and the country's digital transformation.`,
   },
   {
     id: "samuel-olu-gibson",
@@ -965,5 +1041,82 @@ At KNS, he manages SIEM infrastructure, SOC as a service deployments, and networ
     photo: "/images/brand/abdul-majid-bah.webp",
     focus: ["Software engineering", "Tutoring", "Student support"],
     bio: `Abdul Majid Bah is a software engineering intern and tutor at Knowledge Network Solutions (KNS). He supports learners with practical software skills and helps students build with confidence during the programme.`,
+  },
+];
+
+export const programmeJudges: ProgrammeProfile[] = [
+  {
+    id: "olufemi-anthony",
+    name: "Olufemi Anthony",
+    title: "Staff Forward Deployed Engineer, Databricks",
+    photo: "/images/brand/olufemi-anthony.jpg",
+    focus: [
+      "Databricks",
+      "Data engineering",
+      "Apache Spark",
+      "Big data",
+    ],
+    bio: `Olufemi Anthony is a Staff Forward Deployed Engineer at Databricks, based in the New York City metropolitan area. He previously spent more than two years as a Resident Solutions Architect at Databricks, helping organisations put large-scale data platforms into production.
+
+He is a Sierra Leone Grammar School alumnus. He holds a Bachelor of Science in Mathematics and Computer Science from the Massachusetts Institute of Technology and a Master's in Technology Management from the University of Pennsylvania.
+
+His work centres on data engineering, Apache Spark, SQL, Python, and databases, with a focus on turning complex data problems into working systems.`,
+  },
+  {
+    id: "olivia-jonah",
+    name: "Olivia Jonah",
+    title: "Founder & Principal Consultant, Ophel Consultancy Services",
+    photo: "/images/brand/olivia-jonah.jpeg",
+    focus: [
+      "AI & automation",
+      "Portfolio management",
+      "Digital transformation",
+      "Data analytics",
+    ],
+    bio: `Olivia Jonah is an IT portfolio management professional, AI specialist, consultant, product owner, and technology strategist based in the United States. She has more than 15 years of experience leading enterprise technology initiatives across telecommunications, financial services, education, and IT consulting.
+
+She is recognised for delivering strategic technology solutions through portfolio management, PMO governance, Agile delivery, business intelligence, data analytics, digital transformation, and stakeholder engagement.
+
+As the founder and principal consultant of Ophel Consultancy Services, Olivia helps organisations harness artificial intelligence, automation, and innovative technologies to improve operational performance and achieve their business objectives.
+
+She is an Annie Walsh Memorial School (AWMS) alumnus.`,
+  },
+  {
+    id: "joe-yilla",
+    name: "Joe Yilla",
+    title:
+      "Executive Secretary, Sierra Leone Chamber of Commerce, Industry and Agriculture",
+    photo: "/images/brand/joe-yilla.jpg",
+    focus: [
+      "Trade & private sector",
+      "Entrepreneurship",
+      "Institution building",
+      "Technology & AI",
+    ],
+    bio: `Joe Yilla is Executive Secretary of the Sierra Leone Chamber of Commerce, Industry and Agriculture, where he leads the Secretariat and helps strengthen the Chamber's role in private-sector development, trade facilitation, business advocacy, and institutional growth.
+
+He is also the founder of KNESST, a venture design studio focused on turning ideas, skills, and creativity into viable enterprises, income opportunities, and long-term economic value. Through KNESST and related initiatives, he has worked with founders, organisations, and communities to design and deliver entrepreneurship programmes, incubation initiatives, developer challenges, and design-led platforms grounded in practical execution.
+
+His work sits at the intersection of trade and private-sector development, institution building and economic productivity, entrepreneurship and innovation ecosystems, technology, AI and digital transformation, and talent development.
+
+He holds a Master's in Accounting and Finance from BPP University and writes and speaks about how African countries can turn ideas, resources, and geographic advantages into more productive economies.`,
+  },
+  {
+    id: "melvin-emlyn-king",
+    name: "Ing. Melvin Emlyn King",
+    title: "Deputy Director of Engineering & Infrastructure",
+    photo: "/images/brand/melvin-emlyn-king.jpeg",
+    photoPosition: "center top",
+    focus: [
+      "Engineering & infrastructure",
+      "IoT & smart cities",
+      "Quality of service",
+      "Project management",
+    ],
+    bio: `Ing. Melvin Emlyn King is Deputy Director of Engineering & Infrastructure. He is a qualified project manager with PMP certification, and holds a BSc in Electrical and Electronics Engineering and a Master's in Communications Management.
+
+He served as Vice Chairman for Africa for ITU-T Study Group 20 on the Internet of Things, Smart Cities and Communities. He has been an active member of ITU-T Study Group 12 on Quality of Service and Quality of Experience since 2017, and has participated in AI preparedness workshops organised by the Ministry of Communication, Technology and Innovation (MOCTI).
+
+He is a Regentonian and a Sierra Leone Grammar School alumnus, class of 1997.`,
   },
 ];

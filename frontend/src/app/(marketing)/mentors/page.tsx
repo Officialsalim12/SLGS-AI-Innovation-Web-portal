@@ -3,11 +3,13 @@
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { MarketingCard, PageIntro } from "@/components/marketing/page-chrome";
-import { programmeMentors } from "@/lib/data";
+import {
+  programmeJudges,
+  programmeMentors,
+  type ProgrammeProfile,
+} from "@/lib/data";
 
 export default function MentorsPage() {
-  const mentors = programmeMentors;
-
   return (
     <div className="overflow-x-hidden pb-16 pt-8 sm:pb-20 sm:pt-12 md:pb-28 md:pt-16">
       <div className="mx-auto max-w-5xl px-4 sm:px-6">
@@ -17,10 +19,7 @@ export default function MentorsPage() {
         >
           <div className="grid gap-0 md:grid-cols-[minmax(0,1fr)_minmax(0,300px)]">
             <div className="p-5 sm:p-7">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
-                About the programme partner
-              </p>
-              <h2 className="font-display mt-2 text-[50px] font-bold leading-none tracking-tight text-fg">
+              <h2 className="font-display text-[50px] font-bold leading-none tracking-tight text-fg">
                 Knowledge Network Solutions
               </h2>
               <div className="mt-4 space-y-3 text-sm leading-relaxed text-fg/60 sm:text-[15px]">
@@ -136,71 +135,162 @@ export default function MentorsPage() {
         </MarketingCard>
 
         <PageIntro
-          title="Meet the mentors"
-          description="These are the mentors who will help teams during the build weeks. Read their profiles so you know who is supporting the programme."
-          className="mb-10 sm:mb-14"
+          title="Mentors & judges"
+          description="Meet the judges who will score Demo Day, and the mentors who will help teams during the build weeks."
+          className="mb-8 sm:mb-10"
         />
 
-        <ul className="space-y-8 sm:space-y-10">
-          {mentors.map((mentor, i) => (
-            <li key={mentor.id} className="list-none">
-              <motion.article
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{
-                  delay: Math.min(i * 0.06, 0.35),
-                  duration: 0.45,
-                }}
-                className="overflow-hidden rounded-2xl border border-line bg-card/90 p-5 shadow-[0_1px_0_rgba(15,23,42,0.03)] backdrop-blur-sm sm:p-7"
-              >
-                <div className="grid gap-6 md:grid-cols-[minmax(0,320px)_minmax(0,1fr)] md:items-center md:gap-8">
-                  <div className="relative mx-auto aspect-square w-full max-w-[320px] overflow-hidden rounded-xl border border-line bg-white">
-                    <Image
-                      src={mentor.photo}
-                      alt={mentor.name}
-                      fill
-                      priority={i === 0}
-                      sizes="(max-width: 768px) 88vw, 320px"
-                      className="object-cover"
-                    />
-                  </div>
-                  <div className="flex min-w-0 flex-col justify-center">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
-                      Programme mentor
-                    </p>
-                    <h2 className="font-display mt-2 text-2xl font-bold tracking-tight text-fg sm:text-3xl">
-                      {mentor.name}
-                    </h2>
-                    <p className="mt-1.5 text-base font-semibold text-fg/70">
-                      {mentor.title}
-                    </p>
-                    <div className="mt-4 h-1 w-12 rounded-full bg-gradient-to-r from-brand to-blue/70" />
+        <nav
+          aria-label="On this page"
+          className="mb-12 flex flex-wrap items-center justify-center gap-2 sm:mb-14"
+        >
+          <a
+            href="#judges"
+            className="rounded-full border border-line bg-card/80 px-4 py-2 text-sm font-medium text-fg/70 transition hover:border-brand/40 hover:text-brand"
+          >
+            Judges
+          </a>
+          <a
+            href="#mentors"
+            className="rounded-full border border-line bg-card/80 px-4 py-2 text-sm font-medium text-fg/70 transition hover:border-brand/40 hover:text-brand"
+          >
+            Mentors
+          </a>
+        </nav>
 
-                    <div className="mt-5 space-y-3 text-sm leading-relaxed text-fg/60 sm:mt-6 sm:text-[15px] sm:leading-relaxed">
-                      {mentor.bio.split(/\n\n+/).map((para) => (
-                        <p key={para.slice(0, 48)}>{para}</p>
-                      ))}
-                    </div>
+        <ProfileSection
+          id="judges"
+          title="Meet the judges"
+          description="Hackathon judges review live demos and score projects on Demo Day, using the published grading criteria."
+          roleLabel="Hackathon judge"
+          profiles={programmeJudges}
+          emptyMessage="Judge profiles will be added here soon."
+        />
 
-                    {mentor.focus.length > 0 && (
-                      <ul className="mt-6 flex flex-wrap gap-2">
-                        {mentor.focus.map((item) => (
-                          <li
-                            key={item}
-                            className="rounded-md border border-line bg-canvas/80 px-2.5 py-1 text-xs font-medium text-fg/65"
-                          >
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              </motion.article>
+        <ProfileSection
+          id="mentors"
+          title="Meet the mentors"
+          description="Assigned mentors from KNS support teams during the two-week build, from product and technical decisions through to the Demo Day pitch."
+          roleLabel="Programme mentor"
+          profiles={programmeMentors}
+          emptyMessage="Mentor profiles will appear here shortly."
+        />
+      </div>
+    </div>
+  );
+}
+
+function ProfileSection({
+  id,
+  title,
+  description,
+  roleLabel,
+  profiles,
+  emptyMessage,
+}: {
+  id: string;
+  title: string;
+  description: string;
+  roleLabel: string;
+  profiles: ProgrammeProfile[];
+  emptyMessage: string;
+}) {
+  return (
+    <section id={id} className="scroll-mt-24 sm:scroll-mt-28">
+      <div className="mb-8 sm:mb-10">
+        <h2 className="font-display text-2xl font-bold tracking-tight text-fg sm:text-3xl">
+          {title}
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-fg/55 sm:text-base">
+          {description}
+        </p>
+        <div className="mt-4 h-1 w-12 rounded-full bg-gradient-to-r from-brand to-blue/70" />
+      </div>
+
+      {profiles.length === 0 ? (
+        <div className="mb-16 rounded-2xl border border-dashed border-line bg-card/60 px-5 py-10 text-center sm:mb-20 sm:px-7">
+          <p className="text-sm text-fg/55 sm:text-[15px]">{emptyMessage}</p>
+        </div>
+      ) : (
+        <ul className="mb-16 space-y-8 sm:mb-20 sm:space-y-10">
+          {profiles.map((person, i) => (
+            <li key={person.id} className="list-none">
+              <ProfileCard person={person} roleLabel={roleLabel} index={i} />
             </li>
           ))}
         </ul>
+      )}
+    </section>
+  );
+}
+
+function ProfileCard({
+  person,
+  roleLabel,
+  index,
+}: {
+  person: ProgrammeProfile;
+  roleLabel: string;
+  index: number;
+}) {
+  return (
+    <motion.article
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{
+        delay: Math.min(index * 0.06, 0.35),
+        duration: 0.45,
+      }}
+      className="overflow-hidden rounded-2xl border border-line bg-card/90 p-5 shadow-[0_1px_0_rgba(15,23,42,0.03)] backdrop-blur-sm sm:p-7"
+    >
+      <div className="grid gap-6 md:grid-cols-[minmax(0,320px)_minmax(0,1fr)] md:items-center md:gap-8">
+        <div className="relative mx-auto aspect-square w-full max-w-[320px] overflow-hidden rounded-xl border border-line bg-white">
+          <Image
+            src={person.photo}
+            alt={person.name}
+            fill
+            priority={index === 0}
+            sizes="(max-width: 768px) 88vw, 320px"
+            className="object-cover"
+            style={
+              person.photoPosition
+                ? { objectPosition: person.photoPosition }
+                : undefined
+            }
+          />
+        </div>
+        <div className="flex min-w-0 flex-col justify-center">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
+            {roleLabel}
+          </p>
+          <h3 className="font-display mt-2 text-2xl font-bold tracking-tight text-fg sm:text-3xl">
+            {person.name}
+          </h3>
+          <p className="mt-1.5 text-base font-semibold text-fg/70">
+            {person.title}
+          </p>
+          <div className="mt-4 h-1 w-12 rounded-full bg-gradient-to-r from-brand to-blue/70" />
+
+          <div className="mt-5 space-y-3 text-sm leading-relaxed text-fg/60 sm:mt-6 sm:text-[15px] sm:leading-relaxed">
+            {person.bio.split(/\n\n+/).map((para) => (
+              <p key={para.slice(0, 48)}>{para}</p>
+            ))}
+          </div>
+
+          {person.focus.length > 0 && (
+            <ul className="mt-6 flex flex-wrap gap-2">
+              {person.focus.map((item) => (
+                <li
+                  key={item}
+                  className="rounded-md border border-line bg-canvas/80 px-2.5 py-1 text-xs font-medium text-fg/65"
+                >
+                  {item}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
       </div>
-    </div>
+    </motion.article>
   );
 }

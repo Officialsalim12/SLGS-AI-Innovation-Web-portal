@@ -11,13 +11,15 @@ const categories = ["All", ...challengeTracks.map((t) => t.name)];
 export default function ChallengesPage() {
   const [active, setActive] = useState("All");
 
-  const filtered = useMemo(
-    () =>
+  const filtered = useMemo(() => {
+    const list =
       active === "All"
         ? challenges
-        : challenges.filter((c) => c.track === active),
-    [active]
-  );
+        : challenges.filter((c) => c.track === active);
+    return [...list].sort(
+      (a, b) => Number(Boolean(b.selected)) - Number(Boolean(a.selected))
+    );
+  }, [active]);
 
   const activeTrack =
     active === "All"
@@ -32,6 +34,16 @@ export default function ChallengesPage() {
           description="These are starter problems you can pick from. Your team can also bring your own idea for a Sierra Leone problem and build that instead."
           align="left"
         />
+
+        <MarketingCard className="p-4 sm:p-5" hover={false}>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
+            Selected by teams
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-fg/65 sm:text-[15px]">
+            Five problems below are marked as selected projects. These are the
+            ideas teams have chosen to build during the programme.
+          </p>
+        </MarketingCard>
 
         <MarketingCard className="p-4 sm:p-5" hover={false}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
@@ -120,14 +132,24 @@ export default function ChallengesPage() {
                 transition={{ delay: Math.min(i * 0.03, 0.35) }}
                 className="scroll-mt-24 list-none sm:scroll-mt-28"
               >
-                <MarketingCard className="p-4 sm:p-6 md:p-7">
-                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <MarketingCard
+                  className={cn(
+                    "p-4 sm:p-6 md:p-7",
+                    idea.selected && "border-brand bg-brand/[0.04]"
+                  )}
+                >
+                  <div className="flex flex-wrap items-baseline gap-x-3 gap-y-2">
                     <span className="font-display text-sm font-bold text-brand/50">
                       {idea.code}
                     </span>
                     <h2 className="font-display text-lg font-bold text-fg sm:text-xl">
                       {idea.title}
                     </h2>
+                    {idea.selected && (
+                      <span className="rounded-md bg-brand px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.12em] text-white dark:text-navy">
+                        Selected by teams
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1 inline-flex rounded-md bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand sm:text-sm">
                     {idea.track}

@@ -6,6 +6,7 @@ import {
   useContext,
   useEffect,
   useState,
+  type ReactNode,
 } from "react";
 import { usePathname } from "next/navigation";
 
@@ -84,7 +85,7 @@ function applyTheme(theme: Theme) {
   root.style.colorScheme = theme;
 }
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+export function ThemeProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname() || "/";
   const storageKey = storageKeyFor(pathname);
   const [theme, setThemeState] = useState<Theme>("light");

@@ -29,7 +29,7 @@ export function AuthShell({
   return (
     <div className="relative min-h-dvh bg-canvas text-fg">
       <div className="grid min-h-dvh lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-        <aside className="relative hidden overflow-hidden lg:flex lg:flex-col lg:justify-between lg:p-10 xl:p-12">
+        <aside className="relative hidden overflow-hidden lg:flex lg:flex-col lg:p-10 xl:p-12">
           <div
             className="absolute inset-0 bg-[linear-gradient(155deg,#1a1025_0%,#2d1848_42%,#5d2a80_78%,#3b1d5c_100%)]"
             aria-hidden
@@ -74,7 +74,7 @@ export function AuthShell({
             </Link>
           </div>
 
-          <div className="relative z-10 max-w-md py-16">
+          <div className="relative z-10 flex max-w-md flex-1 flex-col justify-center py-16">
             <motion.p
               initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
@@ -108,10 +108,6 @@ export function AuthShell({
               className="mt-8 h-1 w-16 origin-left rounded-full bg-gradient-to-r from-white to-white/30"
             />
           </div>
-
-          <p className="relative z-10 text-xs text-white/45">
-              Secure access facilitated by KNS in partnership with SLGS.
-            </p>
         </aside>
 
         <section className="relative flex min-h-dvh flex-col">

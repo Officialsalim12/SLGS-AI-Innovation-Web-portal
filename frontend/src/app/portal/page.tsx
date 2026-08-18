@@ -35,7 +35,6 @@ export default function PortalsPage() {
     <AuthShell
       title="Choose your portal"
       description="Select how you’re joining the AI Innovation Programme."
-      eyebrow="Access"
       wide
       footer={
         <p>

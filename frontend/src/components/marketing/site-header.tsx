@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 export const marketingNav = [
   { href: "/challenges", label: "Challenges" },
   { href: "/timeline", label: "Timeline" },
-  { href: "/mentors", label: "Mentors" },
+  { href: "/mentors", label: "Mentors & Judges" },
   { href: "/grading", label: "Grading" },
   { href: "/faq", label: "FAQ" },
   { href: "/platform", label: "Tools" },
