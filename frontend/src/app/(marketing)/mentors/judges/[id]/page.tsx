@@ -21,9 +21,30 @@ export async function generateMetadata({
   if (!judge) {
     return { title: "Judge" };
   }
+  const description =
+    judge.bio.split(/\n\n+/)[0] || `${judge.name}, programme judge.`;
+  const title = `${judge.name} · Judge`;
   return {
-    title: `${judge.name} · Judge`,
-    description: judge.bio.split(/\n\n+/)[0] || `${judge.name}, programme judge.`,
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "profile",
+      url: `/mentors/judges/${judge.id}`,
+      images: [
+        {
+          url: judge.photo,
+          alt: judge.name,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [judge.photo],
+    },
   };
 }
 

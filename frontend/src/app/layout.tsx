@@ -22,6 +22,12 @@ const sora = Sora({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_SITE_URL ||
+      (process.env.VERCEL_URL
+        ? `https://${process.env.VERCEL_URL}`
+        : "https://slgs-ai-innovation-web-portal.vercel.app")
+  ),
   title:
     "KNS and SLGS AI Innovation Programme 2026",
   description:
