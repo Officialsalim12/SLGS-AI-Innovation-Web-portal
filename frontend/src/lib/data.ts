@@ -222,7 +222,7 @@ export const faqs = [
   },
   {
     q: "How do we submit and get judged?",
-    a: "Follow the programme deadlines, deploy your app, and present a live demo. Scoring covers solution quality, how well you met the challenge, your pitch, and teamwork. Full details are on the Grading page.",
+    a: "Follow the programme deadlines, deploy your app, and present a live demo. Judges score with SMART: Specific, Measurable, Achievable, Relevant, and Time-bound. Full details are on the Grading page.",
   },
   {
     q: "What if our project isn't finished?",
@@ -992,6 +992,7 @@ What drives him is building solutions that last. That same vision sits behind Di
     name: "Samuel Olu Gibson",
     title: "Project Support Engineer & IT Trainer",
     photo: "/images/brand/samuel-olu-gibson.jpeg",
+    photoPosition: "center top",
     focus: [
       "Project management",
       "Technical documentation",
@@ -1120,3 +1121,7 @@ He served as Vice Chairman for Africa for ITU-T Study Group 20 on the Internet o
 He is a Regentonian and a Sierra Leone Grammar School alumnus, class of 1997.`,
   },
 ];
+
+export function getProgrammeJudge(id: string) {
+  return programmeJudges.find((person) => person.id === id) ?? null;
+}

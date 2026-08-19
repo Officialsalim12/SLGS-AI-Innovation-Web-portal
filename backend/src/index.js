@@ -12,6 +12,7 @@ const jwt = require("jsonwebtoken");
 const { prisma } = require("./db");
 const { sendVerificationCodeEmail, sendPasswordResetCodeEmail } = require("./mail/brevo");
 const api = require("./handlers");
+const { findInviteByToken } = require("./invite");
 const {
   UPLOAD_DIR,
   ensureUploadDir,
@@ -179,6 +180,23 @@ async function register(body) {
     return { status: 409, data: { error: "An account with that email already exists." } };
   }
 
+  const pendingInvite = await prisma.invite.findFirst({
+    where: {
+      email,
+      acceptedAt: null,
+      expiresAt: { gt: new Date() },
+    },
+  });
+  if (pendingInvite) {
+    return {
+      status: 409,
+      data: {
+        error:
+          "This email has a pending invitation. Open the invite link we sent you to finish signup.",
+      },
+    };
+  }
+
   const passwordHash = await bcrypt.hash(password, 10);
   const user = existing
     ? await prisma.user.update({
@@ -321,7 +339,8 @@ async function login(body) {
   if (
     user.role !== "PARTICIPANT" &&
     user.role !== "MENTOR" &&
-    user.role !== "ADMIN"
+    user.role !== "ADMIN" &&
+    user.role !== "JUDGE"
   ) {
     return { status: 403, data: { error: "This account cannot sign in here." } };
   }
@@ -472,6 +491,114 @@ async function resetPassword(body) {
   };
 }
 
+async function lookupInvite(token) {
+  const value = String(token || "").trim();
+  if (!value) {
+    return { status: 400, data: { error: "Invite token is required." } };
+  }
+
+  const invite = await findInviteByToken(value);
+  if (!invite || invite.acceptedAt) {
+    return {
+      status: 404,
+      data: { error: "This invitation is invalid or has already been used." },
+    };
+  }
+  if (invite.expiresAt.getTime() < Date.now()) {
+    return {
+      status: 410,
+      data: { error: "This invitation has expired. Ask an administrator to send a new one." },
+    };
+  }
+
+  return {
+    status: 200,
+    data: {
+      email: invite.email,
+      name: invite.name || "",
+      role: invite.role,
+      expiresAt: invite.expiresAt,
+      invitedBy: invite.invitedBy?.name || null,
+    },
+  };
+}
+
+async function acceptInvite(body) {
+  const token = String(body.token || "").trim();
+  const name = String(body.name || "").trim();
+  const password = String(body.password || "");
+
+  if (!token) {
+    return { status: 400, data: { error: "Invite token is required." } };
+  }
+  if (!name || name.length < 2) {
+    return { status: 400, data: { error: "Enter your full name." } };
+  }
+  const passwordError = validatePassword(password);
+  if (passwordError) {
+    return { status: 400, data: { error: passwordError } };
+  }
+
+  const invite = await findInviteByToken(token);
+  if (!invite || invite.acceptedAt) {
+    return {
+      status: 404,
+      data: { error: "This invitation is invalid or has already been used." },
+    };
+  }
+  if (invite.expiresAt.getTime() < Date.now()) {
+    return {
+      status: 410,
+      data: { error: "This invitation has expired. Ask an administrator to send a new one." },
+    };
+  }
+
+  const existing = await prisma.user.findUnique({ where: { email: invite.email } });
+  if (existing?.emailVerifiedAt) {
+    return {
+      status: 409,
+      data: { error: "An account with that email already exists. Sign in instead." },
+    };
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const now = new Date();
+  const user = existing
+    ? await prisma.user.update({
+        where: { id: existing.id },
+        data: {
+          name,
+          passwordHash,
+          role: invite.role,
+          emailVerifiedAt: now,
+          verificationCodeHash: null,
+          verificationCodeExpiresAt: null,
+        },
+      })
+    : await prisma.user.create({
+        data: {
+          name,
+          email: invite.email,
+          passwordHash,
+          role: invite.role,
+          emailVerifiedAt: now,
+        },
+      });
+
+  await prisma.invite.update({
+    where: { id: invite.id },
+    data: { acceptedAt: now, name },
+  });
+
+  return {
+    status: 200,
+    data: {
+      token: signToken(user),
+      user: publicUser(user),
+    },
+  };
+}
+
 const server = http.createServer(async (req, res) => {
   setCors(res);
 
@@ -529,6 +656,19 @@ const server = http.createServer(async (req, res) => {
     if (path === "/api/auth/reset-password" && req.method === "POST") {
       const body = await readBody(req);
       const result = await resetPassword(body);
+      send(res, result.status, result.data);
+      return;
+    }
+
+    if (path === "/api/auth/invite" && req.method === "GET") {
+      const result = await lookupInvite(url.searchParams.get("token"));
+      send(res, result.status, result.data);
+      return;
+    }
+
+    if (path === "/api/auth/invite/accept" && req.method === "POST") {
+      const body = await readBody(req);
+      const result = await acceptInvite(body);
       send(res, result.status, result.data);
       return;
     }
@@ -783,6 +923,20 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    const adminParticipantRoleMatch = path.match(
+      /^\/api\/admin\/participants\/([^/]+)\/role$/
+    );
+    if (adminParticipantRoleMatch && req.method === "POST") {
+      const body = await readBody(req);
+      await api.handleAdminSetParticipantRole(
+        req,
+        res,
+        adminParticipantRoleMatch[1],
+        body
+      );
+      return;
+    }
+
     const adminParticipantMatch = path.match(
       /^\/api\/admin\/participants\/([^/]+)$/
     );
@@ -809,6 +963,31 @@ const server = http.createServer(async (req, res) => {
     if (path === "/api/admin/submissions" && req.method === "POST") {
       const body = await readBody(req);
       await api.handleAdminUpdateSubmission(req, res, body);
+      return;
+    }
+
+    if (path === "/api/admin/staff" && req.method === "GET") {
+      await api.handleAdminStaff(req, res);
+      return;
+    }
+
+    if (path === "/api/admin/invites" && req.method === "POST") {
+      const body = await readBody(req);
+      await api.handleCreateInvite(req, res, body);
+      return;
+    }
+
+    const adminInviteResendMatch = path.match(
+      /^\/api\/admin\/invites\/([^/]+)\/resend$/
+    );
+    if (adminInviteResendMatch && req.method === "POST") {
+      await api.handleResendInvite(req, res, adminInviteResendMatch[1]);
+      return;
+    }
+
+    const adminInviteMatch = path.match(/^\/api\/admin\/invites\/([^/]+)$/);
+    if (adminInviteMatch && req.method === "DELETE") {
+      await api.handleRevokeInvite(req, res, adminInviteMatch[1]);
       return;
     }
 

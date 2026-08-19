@@ -3,8 +3,7 @@ import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "Mentors & Judges",
-  description:
-    "Meet the mentors who will help teams during the build weeks, and the judges who will score Demo Day.",
+  description: "Meet our judges and mentors for the AI Innovation Hackathon 2026.",
 };
 
 export default function MentorsLayout({ children }: { children: ReactNode }) {

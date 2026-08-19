@@ -6,7 +6,7 @@ export default function MentorReviewsPage() {
   return (
     <SubmissionReviewPanel
       title="Project Reviews"
-      description="Review files from your assigned teams and send feedback. Administrators publish final leaderboard scores."
+      description="Review files from your assigned teams and send feedback. Judges score submitted projects."
     />
   );
 }

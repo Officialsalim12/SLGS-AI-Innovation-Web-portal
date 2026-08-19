@@ -36,7 +36,7 @@ async function main() {
       theme: "Building for Sierra Leone",
       venue: "Sierra Leone Grammar School, Murray Town",
       startDate: new Date("2026-07-27"),
-      endDate: new Date("2026-08-21"),
+      endDate: new Date("2026-08-20"),
       welcomeLine:
         "Four weeks: two weeks of instructor led bootcamp, then two weeks building with your team and mentor. Facilitated by KNS in partnership with SLGS.",
     },

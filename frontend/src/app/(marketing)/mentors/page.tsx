@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { MarketingCard, PageIntro } from "@/components/marketing/page-chrome";
 import {
@@ -136,7 +137,6 @@ export default function MentorsPage() {
 
         <PageIntro
           title="Mentors & judges"
-          description="Meet the judges who will score Demo Day, and the mentors who will help teams during the build weeks."
           className="mb-8 sm:mb-10"
         />
 
@@ -160,20 +160,22 @@ export default function MentorsPage() {
 
         <ProfileSection
           id="judges"
-          title="Meet the judges"
-          description="Hackathon judges review live demos and score projects on Demo Day, using the published grading criteria."
+          title="Meet Our Judges"
+          description="For the AI Innovation Hackathon 2026"
           roleLabel="Hackathon judge"
           profiles={programmeJudges}
           emptyMessage="Judge profiles will be added here soon."
+          variant="judge"
         />
 
         <ProfileSection
           id="mentors"
-          title="Meet the mentors"
-          description="Assigned mentors from KNS support teams during the two-week build, from product and technical decisions through to the Demo Day pitch."
+          title="Meet Our Mentors"
+          description="For the AI Innovation Hackathon 2026"
           roleLabel="Programme mentor"
           profiles={programmeMentors}
           emptyMessage="Mentor profiles will appear here shortly."
+          variant="mentor"
         />
       </div>
     </div>
@@ -187,6 +189,7 @@ function ProfileSection({
   roleLabel,
   profiles,
   emptyMessage,
+  variant,
 }: {
   id: string;
   title: string;
@@ -194,6 +197,7 @@ function ProfileSection({
   roleLabel: string;
   profiles: ProgrammeProfile[];
   emptyMessage: string;
+  variant: "judge" | "mentor";
 }) {
   return (
     <section id={id} className="scroll-mt-24 sm:scroll-mt-28">
@@ -215,7 +219,12 @@ function ProfileSection({
         <ul className="mb-16 space-y-8 sm:mb-20 sm:space-y-10">
           {profiles.map((person, i) => (
             <li key={person.id} className="list-none">
-              <ProfileCard person={person} roleLabel={roleLabel} index={i} />
+              <ProfileCard
+                person={person}
+                roleLabel={roleLabel}
+                index={i}
+                variant={variant}
+              />
             </li>
           ))}
         </ul>
@@ -228,11 +237,46 @@ function ProfileCard({
   person,
   roleLabel,
   index,
+  variant,
 }: {
   person: ProgrammeProfile;
   roleLabel: string;
   index: number;
+  variant: "judge" | "mentor";
 }) {
+  const isJudge = variant === "judge";
+
+  if (isJudge) {
+    return (
+      <motion.article
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{
+          delay: Math.min(index * 0.06, 0.35),
+          duration: 0.45,
+        }}
+        className="rounded-2xl border border-line bg-card/90 px-5 py-5 shadow-[0_1px_0_rgba(15,23,42,0.03)] backdrop-blur-sm sm:px-7 sm:py-6"
+      >
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+          <div className="min-w-0 text-left">
+            <h3 className="font-display text-xl font-bold tracking-tight text-fg sm:text-2xl">
+              {person.name}
+            </h3>
+            <p className="mt-1 text-sm font-medium text-fg/65 sm:text-base">
+              {person.title}
+            </p>
+          </div>
+          <Link
+            href={`/mentors/judges/${person.id}`}
+            className="shrink-0 text-sm font-semibold text-brand underline decoration-brand/30 underline-offset-4 transition hover:decoration-brand sm:text-right"
+          >
+            See full bio
+          </Link>
+        </div>
+      </motion.article>
+    );
+  }
+
   return (
     <motion.article
       initial={{ opacity: 0, y: 16 }}
@@ -271,7 +315,7 @@ function ProfileCard({
           </p>
           <div className="mt-4 h-1 w-12 rounded-full bg-gradient-to-r from-brand to-blue/70" />
 
-          <div className="mt-5 space-y-3 text-sm leading-relaxed text-fg/60 sm:mt-6 sm:text-[15px] sm:leading-relaxed">
+          <div className="mt-5 space-y-3 text-sm leading-relaxed text-fg/60 sm:mt-6 sm:text-[15px]">
             {person.bio.split(/\n\n+/).map((para) => (
               <p key={para.slice(0, 48)}>{para}</p>
             ))}

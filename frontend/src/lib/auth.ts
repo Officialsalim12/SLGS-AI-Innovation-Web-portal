@@ -1,4 +1,4 @@
-export type AuthRole = "PARTICIPANT" | "MENTOR" | "ADMIN";
+export type AuthRole = "PARTICIPANT" | "MENTOR" | "ADMIN" | "JUDGE";
 
 export type AuthUser = {
   id: string;
@@ -51,7 +51,16 @@ export function clearSession() {
 export function dashboardForRole(role: AuthRole) {
   if (role === "MENTOR") return "/mentor";
   if (role === "ADMIN") return "/admin";
+  if (role === "JUDGE") return "/judge";
   return "/dashboard";
+}
+
+export function roleLabel(role: AuthRole | null | undefined) {
+  if (role === "ADMIN") return "Administrator";
+  if (role === "MENTOR") return "Mentor";
+  if (role === "JUDGE") return "Judge";
+  if (role === "PARTICIPANT") return "Participant";
+  return "Account";
 }
 
 export function postLoginPath(user: AuthUser | AuthRole) {
@@ -158,6 +167,38 @@ export function resetPassword(input: {
 }) {
   return postJson<{ email: string; message: string }>(
     "/api/auth/reset-password",
+    input
+  );
+}
+
+export async function getInvite(token: string) {
+  const res = await fetch(
+    `${apiBase()}/api/auth/invite?token=${encodeURIComponent(token)}`
+  );
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const error = new Error(
+      data.error || "This invitation is invalid or has expired."
+    ) as Error & { status?: number };
+    error.status = res.status;
+    throw error;
+  }
+  return data as {
+    email: string;
+    name: string;
+    role: "ADMIN" | "JUDGE";
+    expiresAt: string;
+    invitedBy: string | null;
+  };
+}
+
+export function acceptInvite(input: {
+  token: string;
+  name: string;
+  password: string;
+}) {
+  return postJson<{ token: string; user: AuthUser }>(
+    "/api/auth/invite/accept",
     input
   );
 }

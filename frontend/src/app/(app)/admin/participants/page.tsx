@@ -5,6 +5,7 @@ import { Trash2 } from "lucide-react";
 import { PortalPageHeader } from "@/components/dashboard/dashboard-chrome";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { PageLoader } from "@/components/ui/spinner";
 import { api } from "@/lib/api";
 import { toast } from "@/components/ui/toast";
@@ -13,6 +14,12 @@ type Participant = Awaited<
   ReturnType<typeof api.adminParticipants>
 >["participants"][number];
 type TeamRow = Awaited<ReturnType<typeof api.teams>>["teams"][number];
+
+function teamRoleLabel(role: Participant["teamRole"]) {
+  if (role === "LEAD") return "Project Lead";
+  if (role === "MEMBER") return "Member";
+  return "Unassigned";
+}
 
 const selectClass =
   "h-9 min-w-[10rem] rounded-xl border border-line bg-input px-3 text-sm text-fg outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/20 disabled:opacity-60";
@@ -63,7 +70,12 @@ export default function AdminParticipantsPage() {
       setParticipants((list) =>
         list.map((p) =>
           p.id === person.id
-            ? { ...p, team: res.team, teamId: res.teamId }
+            ? {
+                ...p,
+                team: res.team,
+                teamId: res.teamId,
+                teamRole: res.teamRole ?? null,
+              }
             : p
         )
       );
@@ -103,6 +115,42 @@ export default function AdminParticipantsPage() {
     }
   }
 
+  async function changeRole(person: Participant, role: "LEAD" | "MEMBER") {
+    if (busyId || !person.teamId || person.teamRole === role) return;
+    setBusyId(person.id);
+    try {
+      const res = await api.setParticipantRole(person.id, role);
+      setParticipants((list) =>
+        list.map((p) => {
+          if (p.id === person.id) {
+            return { ...p, teamRole: res.teamRole };
+          }
+          if (
+            res.previousLead &&
+            p.id === res.previousLead.id &&
+            p.teamId === person.teamId
+          ) {
+            return { ...p, teamRole: "MEMBER" };
+          }
+          return p;
+        })
+      );
+      toast(
+        res.previousLead
+          ? `${person.name} is now Project Lead. ${res.previousLead.name} is now a Member.`
+          : `${person.name} is now ${teamRoleLabel(res.teamRole)}.`,
+        "success"
+      );
+    } catch (err) {
+      toast(
+        err instanceof Error ? err.message : "Could not update role",
+        "error"
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   function Actions({ person }: { person: Participant }) {
     const busy = busyId === person.id;
     const destination = destinations[person.id] || "";
@@ -110,6 +158,22 @@ export default function AdminParticipantsPage() {
 
     return (
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+        <select
+          value={person.teamRole || ""}
+          disabled={busy || !person.teamId}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === "LEAD" || value === "MEMBER") {
+              changeRole(person, value);
+            }
+          }}
+          className={selectClass}
+          aria-label={`Team role for ${person.name}`}
+        >
+          {!person.teamId && <option value="">No team</option>}
+          <option value="LEAD">Project Lead</option>
+          <option value="MEMBER">Member</option>
+        </select>
         <select
           value={destination}
           disabled={busy || otherTeams.length === 0}
@@ -171,7 +235,7 @@ export default function AdminParticipantsPage() {
     <div className="space-y-5 sm:space-y-6">
       <PortalPageHeader
         title="Participants"
-        description="Transfer a participant to another team, remove them from a team, or delete their account."
+        description="See each participant’s team role, change Project Lead or Member, transfer teams, or delete an account."
       />
 
       <div className="grid gap-3 md:hidden">
@@ -189,6 +253,11 @@ export default function AdminParticipantsPage() {
               <p className="truncate font-medium text-fg">{p.name}</p>
               <p className="mt-0.5 break-all text-xs text-fg-subtle">{p.email}</p>
               <p className="mt-2 text-sm text-fg-muted">{p.team}</p>
+              <div className="mt-2">
+                <Badge variant={p.teamRole === "LEAD" ? "purple" : "muted"}>
+                  {teamRoleLabel(p.teamRole)}
+                </Badge>
+              </div>
             </div>
             <div className="mt-4">
               <Actions person={p} />
@@ -204,13 +273,14 @@ export default function AdminParticipantsPage() {
               <tr>
                 <th className="px-5 py-4">Name</th>
                 <th className="px-5 py-4">Team</th>
+                <th className="px-5 py-4">Role</th>
                 <th className="px-5 py-4">Actions</th>
               </tr>
             </thead>
             <tbody>
               {participants.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="px-5 py-8 text-fg-muted">
+                  <td colSpan={4} className="px-5 py-8 text-fg-muted">
                     No participant accounts yet. Students should sign up at the
                     Participant Portal.
                   </td>
@@ -223,6 +293,11 @@ export default function AdminParticipantsPage() {
                     <p className="break-all text-xs text-fg-subtle">{p.email}</p>
                   </td>
                   <td className="px-5 py-4 text-fg-muted">{p.team}</td>
+                  <td className="px-5 py-4">
+                    <Badge variant={p.teamRole === "LEAD" ? "purple" : "muted"}>
+                      {teamRoleLabel(p.teamRole)}
+                    </Badge>
+                  </td>
                   <td className="px-5 py-4">
                     <Actions person={p} />
                   </td>

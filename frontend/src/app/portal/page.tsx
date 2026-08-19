@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, GraduationCap, Shield, Users } from "lucide-react";
+import { ArrowRight, GraduationCap, Gavel, Shield, Users } from "lucide-react";
 import { AuthLink, AuthShell } from "@/components/auth/auth-shell";
 
 const portals = [
@@ -24,8 +24,15 @@ const portals = [
   {
     loginHref: "/portal/admin",
     title: "Administrator",
-    body: "Manage people, teams, and programme operations.",
+    body: "Manage people, teams, invitations, and programme operations.",
     icon: Shield,
+    canRegister: false,
+  },
+  {
+    loginHref: "/portal/judge",
+    title: "Judge",
+    body: "Score submitted projects after an administrator invites you.",
+    icon: Gavel,
     canRegister: false,
   },
 ];

@@ -72,9 +72,28 @@ model User {
   workspaceDocs   WorkspaceDoc[]  @relation("WorkspaceEditor")
   responsibilities TeamResponsibility[]
   taskComments    TaskComment[]
+  invitesSent     Invite[]        @relation("InvitedBy")
 
   @@index([role])
   @@map("users")
+}
+
+model Invite {
+  id          String    @id @default(cuid())
+  email       String
+  name        String?
+  role        Role
+  tokenHash   String    @unique
+  invitedById String
+  expiresAt   DateTime
+  acceptedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  invitedBy User @relation("InvitedBy", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([email])
+  @@index([role, acceptedAt])
+  @@map("invites")
 }
 
 model Team {
@@ -185,17 +204,18 @@ model Submission {
 }
 
 model Score {
-  id                    String   @id @default(cuid())
-  submissionId          String
-  judgeId               String
-  solutionDevelopment   Int
-  challengeRequirements Int
-  presentation          Int
-  communication         Int
-  total                 Int
-  notes                 String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id           String   @id @default(cuid())
+  submissionId String
+  judgeId      String
+  specific     Int
+  measurable   Int
+  achievable   Int
+  relevant     Int
+  timeBound    Int
+  total        Int
+  notes        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   submission Submission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
   judge      User       @relation(fields: [judgeId], references: [id], onDelete: Cascade)

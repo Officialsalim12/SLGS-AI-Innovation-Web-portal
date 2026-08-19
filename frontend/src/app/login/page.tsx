@@ -54,6 +54,12 @@ const portalMeta: Record<
     eyebrow: "Administrator",
     expectedRole: "ADMIN",
   },
+  judge: {
+    title: "Welcome back",
+    description: "Review submissions and score projects for the leaderboard.",
+    eyebrow: "Judge",
+    expectedRole: "JUDGE",
+  },
 };
 
 function LoginForm() {
@@ -115,7 +121,9 @@ function LoginForm() {
             ? "Mentor Portal"
             : result.user.role === "ADMIN"
               ? "Admin Portal"
-              : "Participant Portal";
+              : result.user.role === "JUDGE"
+                ? "Judge Portal"
+                : "Participant Portal";
         setError(
           `Those credentials belong to a different portal. Sign in through the ${portalLabel} instead.`
         );

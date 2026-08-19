@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Trash2 } from "lucide-react";
-import { PortalPageHeader } from "@/components/dashboard/dashboard-chrome";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Search, Trash2 } from "lucide-react";
 import { PageLoader } from "@/components/ui/spinner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/form-fields";
@@ -16,8 +14,15 @@ type Participant = Awaited<
   ReturnType<typeof api.adminParticipants>
 >["participants"][number];
 
+function roleLabel(role: Participant["teamRole"]) {
+  if (role === "LEAD") return "Lead";
+  if (role === "MEMBER") return "Member";
+  return "—";
+}
+
 export default function AdminTeamsPage() {
   const [name, setName] = useState("");
+  const [query, setQuery] = useState("");
   const [locked, setLocked] = useState(false);
   const [teams, setTeams] = useState<TeamRow[]>([]);
   const [participants, setParticipants] = useState<Participant[]>([]);
@@ -75,28 +80,47 @@ export default function AdminTeamsPage() {
     setMemberIds(selectedTeam.members.map((m) => m.id));
   }, [selectedTeam]);
 
-  const assignedElsewhere = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const team of teams) {
-      if (team.id === selectedTeamId) continue;
-      for (const m of team.members) {
-        map.set(m.id, team.name);
-      }
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    const filtered = participants.filter((p) => {
+      if (!q) return true;
+      return (
+        p.name.toLowerCase().includes(q) || p.email.toLowerCase().includes(q)
+      );
+    });
+
+    const onRoster: Participant[] = [];
+    const available: Participant[] = [];
+    const elsewhere: Participant[] = [];
+
+    for (const p of filtered) {
+      if (memberIds.includes(p.id)) onRoster.push(p);
+      else if (!p.teamId) available.push(p);
+      else elsewhere.push(p);
     }
-    return map;
-  }, [teams, selectedTeamId]);
+
+    const byName = (a: Participant, b: Participant) =>
+      a.name.localeCompare(b.name);
+    onRoster.sort(byName);
+    available.sort(byName);
+    elsewhere.sort(byName);
+
+    return { onRoster, available, elsewhere };
+  }, [participants, memberIds, query]);
 
   async function createTeam() {
     if (!name.trim() || creating) return;
+    const teamName = name.trim();
     setCreating(true);
     try {
-      const res = (await api.createTeam({ name: name.trim() })) as {
+      const res = (await api.createTeam({ name: teamName })) as {
         team?: { id: string };
       };
-      toast(`Team “${name.trim()}” created`, "success");
+      toast(`${teamName} created`, "success");
       setName("");
       const list = await loadAll();
-      const createdId = res.team?.id || list.find((t) => t.name === name.trim())?.id;
+      const createdId =
+        res.team?.id || list.find((t) => t.name === teamName)?.id;
       if (createdId) {
         setSelectedTeamId(createdId);
         setMemberIds([]);
@@ -111,7 +135,7 @@ export default function AdminTeamsPage() {
   async function deleteTeam(team: TeamRow) {
     if (deletingId) return;
     const confirmed = window.confirm(
-      `Delete team “${team.name}”? Members stay in the system but leave this team.`
+      `Delete ${team.name}? Participants remain in the programme but leave this team.`
     );
     if (!confirmed) return;
 
@@ -122,7 +146,7 @@ export default function AdminTeamsPage() {
       if (selectedTeamId === team.id) {
         setSelectedTeamId(list[0]?.id || "");
       }
-      toast(`Team “${team.name}” deleted`, "success");
+      toast(`${team.name} deleted`, "success");
     } catch (err) {
       toast(err instanceof Error ? err.message : "Could not delete team", "error");
     } finally {
@@ -139,7 +163,7 @@ export default function AdminTeamsPage() {
   async function saveMembers() {
     if (!selectedTeam || savingMembers) return;
     if (selectedTeam.locked) {
-      toast("This team is locked. Unlock teams to edit members.", "error");
+      toast("Unlock rosters before editing members.", "error");
       return;
     }
     setSavingMembers(true);
@@ -159,7 +183,7 @@ export default function AdminTeamsPage() {
               }
         )
       );
-      toast(`Updated members for ${selectedTeam.name}`, "success");
+      toast(`Roster saved for ${selectedTeam.name}`, "success");
       await loadAll();
     } catch (err) {
       toast(
@@ -196,185 +220,249 @@ export default function AdminTeamsPage() {
 
   if (error) {
     return (
-      <Card>
-        <p className="text-sm text-fg-muted">{error}</p>
-      </Card>
+      <div className="rounded-lg border border-line bg-card px-4 py-3 text-sm text-fg-muted">
+        {error}
+      </div>
     );
   }
 
+  const dirty = selectedTeam
+    ? memberIds.length !== selectedTeam.members.length ||
+      memberIds.some((id) => !selectedTeam.members.some((m) => m.id === id))
+    : false;
+
   return (
-    <div className="space-y-6">
-      <PortalPageHeader
-        title="Team Management"
-        description="Create teams and add participants. Mentors are assigned separately."
-      />
-
-      <Card>
-        <CardHeader title="Create team" />
-        <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-stretch">
-          <div className="min-w-0 w-full flex-1">
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Team name"
-              onKeyDown={(e) => {
-                if (e.key === "Enter") createTeam();
-              }}
-            />
-          </div>
-          <Button
-            onClick={createTeam}
-            loading={creating}
-            disabled={!name.trim()}
-            className="h-11 w-full shrink-0 sm:w-auto sm:min-w-[9.5rem]"
-          >
-            {creating ? "Creating…" : "Create team"}
-          </Button>
-        </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="mt-4 w-full sm:w-auto"
-          onClick={toggleLock}
-          loading={locking}
-          disabled={teams.length === 0}
-        >
-          {locking
-            ? "Updating…"
-            : locked
-              ? "Unlock teams"
-              : "Lock teams"}
-        </Button>
-        {locked && (
-          <p className="mt-2 text-xs text-fg-subtle">
-            Rosters are frozen — participants cannot join and admins cannot
-            reassign members until unlocked.
+    <div className="space-y-5">
+      <div className="flex flex-col gap-4 border-b border-line pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <h1 className="text-xl font-semibold tracking-tight text-fg sm:text-2xl">
+            Teams
+          </h1>
+          <p className="mt-1 text-sm text-fg-muted">
+            {teams.length} team{teams.length === 1 ? "" : "s"} ·{" "}
+            {participants.length} participant
+            {participants.length === 1 ? "" : "s"}
+            {locked ? " · rosters locked" : ""}
           </p>
-        )}
-      </Card>
+        </div>
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="New team name"
+            className="h-10 rounded-lg sm:w-56"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") createTeam();
+            }}
+          />
+          <div className="flex gap-2">
+            <Button
+              onClick={createTeam}
+              loading={creating}
+              disabled={!name.trim()}
+              className="h-10 rounded-lg"
+            >
+              Create
+            </Button>
+            <Button
+              variant="outline"
+              className="h-10 rounded-lg"
+              onClick={toggleLock}
+              loading={locking}
+              disabled={teams.length === 0}
+            >
+              {locked ? "Unlock" : "Lock"}
+            </Button>
+          </div>
+        </div>
+      </div>
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,240px)_minmax(0,1fr)] lg:gap-6">
-        <Card>
-          <CardHeader title="Teams" />
-          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-thin lg:block lg:space-y-1 lg:overflow-visible lg:pb-0">
+      <div className="grid min-h-[32rem] overflow-hidden rounded-lg border border-line bg-card lg:grid-cols-[16.5rem_minmax(0,1fr)]">
+        <aside className="border-b border-line lg:border-b-0 lg:border-r">
+          <div className="flex items-center justify-between border-b border-line px-3 py-2.5">
+            <p className="text-xs font-medium text-fg-subtle">Teams</p>
+          </div>
+          <div className="max-h-48 overflow-y-auto scrollbar-thin lg:max-h-[calc(100%-2.75rem)]">
             {teams.length === 0 && (
-              <p className="text-sm text-fg-muted">No teams yet.</p>
+              <p className="px-3 py-4 text-sm text-fg-muted">No teams yet.</p>
             )}
-            {teams.map((t) => (
-              <div key={t.id} className="flex shrink-0 items-center gap-1 lg:w-full">
-                <button
-                  type="button"
-                  onClick={() => setSelectedTeamId(t.id)}
+            {teams.map((t) => {
+              const active = selectedTeamId === t.id;
+              return (
+                <div
+                  key={t.id}
                   className={cn(
-                    "min-w-0 flex-1 rounded-xl px-3 py-2.5 text-left text-sm",
-                    selectedTeamId === t.id
-                      ? "bg-surface-hover text-fg"
-                      : "bg-surface-muted text-fg-muted hover:bg-surface-muted lg:bg-transparent"
+                    "flex items-stretch border-b border-line/80 last:border-b-0",
+                    active ? "bg-surface-hover" : "hover:bg-surface-muted"
                   )}
                 >
-                  <span className="block truncate font-medium">{t.name}</span>
-                  <span className="block truncate text-xs text-fg-subtle">
-                    {t.members.length} member{t.members.length === 1 ? "" : "s"}
-                    {t.locked ? " · Locked" : ""}
-                  </span>
-                </button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="shrink-0 text-fg-subtle hover:text-red-500"
-                  disabled={deletingId === t.id}
-                  onClick={() => deleteTeam(t)}
-                  aria-label={`Delete ${t.name}`}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            ))}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedTeamId(t.id)}
+                    className={cn(
+                      "min-w-0 flex-1 px-3 py-2.5 text-left",
+                      active && "border-l-2 border-brand"
+                    )}
+                  >
+                    <span className="block truncate text-sm font-medium text-fg">
+                      {t.name}
+                    </span>
+                    <span className="block text-xs text-fg-subtle">
+                      {t.members.length} {t.members.length === 1 ? "member" : "members"}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className="shrink-0 px-2.5 text-fg-subtle hover:text-red-600 disabled:opacity-40"
+                    disabled={deletingId === t.id}
+                    onClick={() => deleteTeam(t)}
+                    aria-label={`Delete ${t.name}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              );
+            })}
           </div>
-        </Card>
+        </aside>
 
-        <Card>
+        <section className="flex min-w-0 flex-col">
           {selectedTeam ? (
             <>
-              <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="text-xs uppercase tracking-wider text-fg-subtle">
-                    Team
-                  </p>
-                  <h2 className="mt-1 break-words text-2xl font-semibold text-fg">
+                  <h2 className="truncate text-base font-semibold text-fg">
                     {selectedTeam.name}
                   </h2>
-                  <p className="mt-1 text-sm text-fg-muted">
-                    {selectedTeam.locked
-                      ? "This team is locked. Unlock teams to change members."
-                      : "Select participants to add to this team."}
+                  <p className="text-xs text-fg-muted">
+                    {memberIds.length} selected
+                    {dirty ? " · unsaved changes" : ""}
                   </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative min-w-0 flex-1 sm:w-56 sm:flex-none">
+                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-fg-subtle" />
+                    <input
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      placeholder="Search name or email"
+                      className="h-9 w-full rounded-lg border border-line bg-input pl-8 pr-3 text-sm text-fg outline-none placeholder:text-fg-subtle focus:border-brand/50"
+                    />
+                  </div>
+                  <Button
+                    size="sm"
+                    className="h-9 rounded-lg"
+                    onClick={saveMembers}
+                    loading={savingMembers}
+                    disabled={selectedTeam.locked}
+                  >
+                    {selectedTeam.locked ? "Locked" : "Save"}
+                  </Button>
                 </div>
               </div>
 
-              <div className="mt-6 space-y-2">
-                {participants.length === 0 && (
-                  <p className="text-sm text-fg-muted">
-                    No participants registered yet. After they sign up at the
-                    Participant Portal, select them here to add to this team.
-                  </p>
-                )}
-                {participants.map((p) => {
-                  const checked = memberIds.includes(p.id);
-                  const otherTeam = assignedElsewhere.get(p.id);
-                  return (
-                    <label
-                      key={p.id}
-                      className={cn(
-                        "flex items-start gap-3 rounded-xl bg-surface-muted px-4 py-3 text-sm text-fg",
-                        selectedTeam.locked
-                          ? "cursor-not-allowed opacity-60"
-                          : "cursor-pointer"
-                      )}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={checked}
-                        disabled={selectedTeam.locked}
-                        onChange={() => toggleMember(p.id)}
-                        className="mt-0.5 h-4 w-4 accent-purple"
+              {participants.length === 0 ? (
+                <p className="px-4 py-8 text-sm text-fg-muted">
+                  No participants have registered yet.
+                </p>
+              ) : (
+                <div className="min-h-0 flex-1 overflow-x-auto overflow-y-auto scrollbar-thin">
+                  <table className="w-full min-w-[36rem] text-left text-sm">
+                    <thead className="sticky top-0 bg-card text-xs font-medium text-fg-subtle">
+                      <tr className="border-b border-line">
+                        <th className="w-10 px-4 py-2.5" />
+                        <th className="px-3 py-2.5">Name</th>
+                        <th className="px-3 py-2.5">Email</th>
+                        <th className="px-3 py-2.5">Role</th>
+                        <th className="px-3 py-2.5">Team</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <PersonGroup
+                        title="On this team"
+                        people={rows.onRoster}
+                        memberIds={memberIds}
+                        locked={selectedTeam.locked}
+                        onToggle={toggleMember}
                       />
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-medium">{p.name}</span>
-                        <span className="block break-all text-xs text-fg-subtle">
-                          {p.email}
-                        </span>
-                        {otherTeam && !checked && (
-                          <span className="mt-1 block text-xs text-orange-light">
-                            Currently on {otherTeam} — saving moves them here
-                          </span>
-                        )}
-                      </span>
-                    </label>
-                  );
-                })}
-              </div>
-
-              <Button
-                className="mt-6"
-                onClick={saveMembers}
-                loading={savingMembers}
-                disabled={selectedTeam.locked}
-              >
-                {savingMembers
-                  ? "Saving…"
-                  : selectedTeam.locked
-                    ? "Team locked"
-                    : "Save members"}
-              </Button>
+                      <PersonGroup
+                        title="Unassigned"
+                        people={rows.available}
+                        memberIds={memberIds}
+                        locked={selectedTeam.locked}
+                        onToggle={toggleMember}
+                      />
+                      <PersonGroup
+                        title="Other teams"
+                        people={rows.elsewhere}
+                        memberIds={memberIds}
+                        locked={selectedTeam.locked}
+                        onToggle={toggleMember}
+                      />
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </>
           ) : (
-            <p className="text-sm text-fg-muted">
-              Create a team first, then add participants.
+            <p className="px-4 py-8 text-sm text-fg-muted">
+              Create a team to start building a roster.
             </p>
           )}
-        </Card>
+        </section>
       </div>
     </div>
+  );
+}
+
+function PersonGroup({
+  title,
+  people,
+  memberIds,
+  locked,
+  onToggle,
+}: {
+  title: string;
+  people: Participant[];
+  memberIds: string[];
+  locked: boolean;
+  onToggle: (id: string) => void;
+}) {
+  if (people.length === 0) return null;
+
+  return (
+    <>
+      <tr className="bg-surface-muted/80">
+        <td colSpan={5} className="px-4 py-1.5 text-[11px] font-medium text-fg-subtle">
+          {title} ({people.length})
+        </td>
+      </tr>
+      {people.map((p) => {
+          const checked = memberIds.includes(p.id);
+          return (
+            <tr
+              key={p.id}
+              className="border-b border-line/70 last:border-b-0 hover:bg-surface-muted/60"
+            >
+              <td className="px-4 py-2.5">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  disabled={locked}
+                  onChange={() => onToggle(p.id)}
+                  className="h-3.5 w-3.5 accent-[var(--brand)] disabled:opacity-50"
+                  aria-label={`Include ${p.name}`}
+                />
+              </td>
+              <td className="px-3 py-2.5 font-medium text-fg">{p.name}</td>
+              <td className="px-3 py-2.5 text-fg-muted">{p.email}</td>
+              <td className="px-3 py-2.5 text-fg-muted">{roleLabel(p.teamRole)}</td>
+              <td className="px-3 py-2.5 text-fg-muted">
+                {p.teamId ? p.team : "—"}
+              </td>
+            </tr>
+          );
+        })}
+    </>
   );
 }

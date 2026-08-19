@@ -125,7 +125,7 @@ export default function MentorDashboardPage() {
         title={programme?.name || "Mentor dashboard"}
         subtitle={
           programme
-            ? `27 July – 21 August 2026 · ${programme.venue}`
+            ? `27 July – 20 August 2026 · ${programme.venue}`
             : "Review assigned teams and share feedback"
         }
         daysRemaining={programme?.daysRemaining}

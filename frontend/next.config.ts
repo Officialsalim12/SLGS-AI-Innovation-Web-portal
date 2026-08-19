@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
   },
   async redirects() {
     return [
-      { source: "/judge", destination: "/dashboard", permanent: false },
+      { source: "/judge-portal", destination: "/portal/judge", permanent: false },
       { source: "/mentorship", destination: "/mentor-chat", permanent: false },
       { source: "/chat", destination: "/team-chat", permanent: false },
       { source: "/mentor-portal", destination: "/portal/mentor", permanent: false },

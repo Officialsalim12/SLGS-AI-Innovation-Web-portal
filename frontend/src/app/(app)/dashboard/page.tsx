@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Award,
   ChartNoAxesCombined,
@@ -17,7 +18,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { PageLoader } from "@/components/ui/spinner";
 import { api } from "@/lib/api";
-import { getStoredUser } from "@/lib/auth";
+import { dashboardForRole, getStoredUser } from "@/lib/auth";
 
 type DashData = {
   user?: { name: string };
@@ -43,11 +44,18 @@ type DashData = {
 };
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [name, setName] = useState(getStoredUser()?.name?.split(" ")[0] || "");
   const [data, setData] = useState<DashData | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    const stored = getStoredUser();
+    if (stored && stored.role !== "PARTICIPANT") {
+      router.replace(dashboardForRole(stored.role));
+      return;
+    }
+
     let cancelled = false;
     (async () => {
       try {
@@ -64,7 +72,7 @@ export default function DashboardPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [router]);
 
   if (!data && !error) {
     return <PageLoader label="Loading dashboard…" />;
@@ -125,7 +133,7 @@ export default function DashboardPage() {
         title={data?.programme?.name || "Your dashboard"}
         subtitle={
           data?.programme
-            ? `27 July – 21 August 2026 · ${data.programme.venue}`
+            ? `27 July – 20 August 2026 · ${data.programme.venue}`
             : undefined
         }
         daysRemaining={data?.programme?.daysRemaining}

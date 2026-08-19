@@ -179,7 +179,12 @@ export const api = {
     type?: string;
     pinned?: boolean;
   }) =>
-    request("/api/announcements", {
+    request<{
+      announcement: { id: string };
+      emailed: number;
+      recipients: number;
+      emailError: string | null;
+    }>("/api/announcements", {
       method: "POST",
       body: JSON.stringify(body),
     }),
@@ -498,7 +503,11 @@ export const api = {
     ),
 
   submission: () =>
-    request<{ submission: Record<string, unknown> | null }>("/api/submission"),
+    request<{
+      submission: Record<string, unknown> | null;
+      isLead?: boolean;
+      canSubmit?: boolean;
+    }>("/api/submission"),
 
   saveSubmission: (body: Record<string, unknown>) =>
     request("/api/submission", { method: "PUT", body: JSON.stringify(body) }),
@@ -512,6 +521,7 @@ export const api = {
         title?: string | null;
         team: string;
         teamId: string | null;
+        teamRole: "LEAD" | "MEMBER" | null;
         online: boolean;
       }>;
     }>("/api/admin/participants"),
@@ -522,9 +532,23 @@ export const api = {
       id: string;
       teamId: string | null;
       team: string;
+      teamRole?: "LEAD" | "MEMBER" | null;
     }>(`/api/admin/participants/${id}/move`, {
       method: "POST",
       body: JSON.stringify({ teamId }),
+    }),
+
+  setParticipantRole: (id: string, role: "LEAD" | "MEMBER") =>
+    request<{
+      ok: boolean;
+      id: string;
+      teamId: string;
+      team: string;
+      teamRole: "LEAD" | "MEMBER";
+      previousLead: { id: string; name: string } | null;
+    }>(`/api/admin/participants/${id}/role`, {
+      method: "POST",
+      body: JSON.stringify({ role }),
     }),
 
   deleteParticipant: (id: string) =>
@@ -540,6 +564,8 @@ export const api = {
   adminSubmissions: () =>
     request<{
       canScore?: boolean;
+      canReopen?: boolean;
+      canViewJudgeScores?: boolean;
       canReview?: boolean;
       submissions: Array<{
         id: string;
@@ -560,11 +586,27 @@ export const api = {
         version: string;
         score?: number | null;
         scoreNotes?: string | null;
+        judgeCount?: number;
+        judgeScores?: Array<{
+          judgeId: string;
+          judgeName: string;
+          total: number;
+          notes: string | null;
+          updatedAt: string;
+          breakdown: {
+            specific: number;
+            measurable: number;
+            achievable: number;
+            relevant: number;
+            timeBound: number;
+          } | null;
+        }>;
         breakdown?: {
-          solutionDevelopment: number;
-          challengeRequirements: number;
-          presentation: number;
-          communication: number;
+          specific: number;
+          measurable: number;
+          achievable: number;
+          relevant: number;
+          timeBound: number;
         } | null;
         files?: Array<{ key: string; label: string; url: string }>;
       }>;
@@ -602,5 +644,64 @@ export const api = {
     request("/api/mentors/assign", {
       method: "POST",
       body: JSON.stringify(body),
+    }),
+
+  adminStaff: () =>
+    request<{
+      invites: Array<{
+        id: string;
+        email: string;
+        name: string | null;
+        role: "ADMIN" | "JUDGE";
+        expiresAt: string;
+        acceptedAt: string | null;
+        createdAt: string;
+        invitedBy: { id: string; name: string } | null;
+      }>;
+      admins: Array<{
+        id: string;
+        name: string;
+        email: string;
+        role: "ADMIN";
+        title?: string | null;
+        createdAt: string;
+      }>;
+      judges: Array<{
+        id: string;
+        name: string;
+        email: string;
+        role: "JUDGE";
+        title?: string | null;
+        createdAt: string;
+      }>;
+    }>("/api/admin/staff"),
+
+  inviteStaff: (body: {
+    email: string;
+    role: "ADMIN" | "JUDGE";
+    name?: string;
+  }) =>
+    request<{
+      invite: {
+        id: string;
+        email: string;
+        name: string | null;
+        role: "ADMIN" | "JUDGE";
+        expiresAt: string;
+      };
+      message: string;
+    }>("/api/admin/invites", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  resendInvite: (id: string) =>
+    request<{ message: string }>(`/api/admin/invites/${id}/resend`, {
+      method: "POST",
+    }),
+
+  revokeInvite: (id: string) =>
+    request<{ ok: boolean; id: string }>(`/api/admin/invites/${id}`, {
+      method: "DELETE",
     }),
 };

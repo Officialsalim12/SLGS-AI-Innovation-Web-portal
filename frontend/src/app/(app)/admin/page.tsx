@@ -13,6 +13,8 @@ import {
   ArrowRight,
   UserRound,
   BarChart3,
+  Gavel,
+  UserPlus,
 } from "lucide-react";
 import {
   DashboardHero,
@@ -29,8 +31,9 @@ const modules = [
   { href: "/admin/participants", label: "Participants", icon: UserRound },
   { href: "/admin/teams", label: "Teams", icon: Users },
   { href: "/admin/mentors", label: "Assign Mentors", icon: GraduationCap },
+  { href: "/admin/invites", label: "Invite judges & admins", icon: UserPlus },
   { href: "/announcements", label: "Post Announcement", icon: Megaphone },
-  { href: "/leaderboard", label: "Setup Leaderboard", icon: BarChart3 },
+  { href: "/leaderboard", label: "Leaderboard", icon: BarChart3 },
   { href: "/admin/submissions", label: "Project Reviews", icon: Upload },
 ];
 
@@ -38,6 +41,7 @@ type Overview = {
   participants: number;
   teams: number;
   mentors: number;
+  judges: number;
   announcements: number;
   projectsSubmitted: number;
   pendingSubmissions: number;
@@ -122,6 +126,12 @@ export default function AdminDashboardPage() {
       tone: "bg-purple/15 text-purple-light",
     },
     {
+      label: "Judges",
+      value: overview?.judges ?? "—",
+      icon: Gavel,
+      tone: "bg-emerald/15 text-emerald-light",
+    },
+    {
       label: "Announcements",
       value: overview?.announcements ?? "—",
       icon: Megaphone,
@@ -160,7 +170,7 @@ export default function AdminDashboardPage() {
         title={programme?.name || "Programme dashboard"}
         subtitle={
           programme
-            ? `27 July – 21 August 2026 · ${programme.venue}`
+            ? `27 July – 20 August 2026 · ${programme.venue}`
             : undefined
         }
         daysRemaining={programme?.daysRemaining}
@@ -224,7 +234,22 @@ export default function AdminDashboardPage() {
         </div>
       </motion.div>
 
-      <div className="grid gap-4 lg:grid-cols-2 lg:gap-6">
+      <div className="grid gap-4 lg:grid-cols-3 lg:gap-6">
+        <Card className="border border-line/70 shadow-[0_12px_40px_-28px_rgba(15,23,42,0.35)]">
+          <h3 className="font-display text-base font-semibold text-fg">
+            Invite judges & admins
+          </h3>
+          <p className="mt-2 text-sm text-fg-muted">
+            Email an invitation so they can complete signup and open their
+            dashboard.
+          </p>
+          <Link href="/admin/invites" className="mt-4 inline-block">
+            <Button size="sm">
+              Send invitation
+              <ArrowRight className="h-3.5 w-3.5" />
+            </Button>
+          </Link>
+        </Card>
         <Card className="border border-line/70 shadow-[0_12px_40px_-28px_rgba(15,23,42,0.35)]">
           <h3 className="font-display text-base font-semibold text-fg">
             Assign mentors

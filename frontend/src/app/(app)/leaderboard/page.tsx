@@ -4,17 +4,12 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { Medal, Trophy } from "lucide-react";
 import { PortalPageHeader } from "@/components/dashboard/dashboard-chrome";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/spinner";
-import { Input } from "@/components/ui/form-fields";
 import { api } from "@/lib/api";
-import { getStoredUser } from "@/lib/auth";
 import { cn } from "@/lib/utils";
-import { toast } from "@/components/ui/toast";
 
 type Row = Awaited<ReturnType<typeof api.leaderboard>>["leaderboard"][number];
-type TeamRow = Awaited<ReturnType<typeof api.teams>>["teams"][number];
 
 function podiumTone(rank: number) {
   if (rank === 1) return "from-amber-400/30 via-amber-200/10 to-transparent border-amber-400/40";
@@ -32,36 +27,18 @@ function rankBadge(rank: number) {
 
 export default function LeaderboardPage() {
   const [rows, setRows] = useState<Row[]>([]);
-  const [teams, setTeams] = useState<TeamRow[]>([]);
   const [selected, setSelected] = useState<Row | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [teamId, setTeamId] = useState("");
-  const [score, setScore] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  async function loadLeaderboard() {
-    const res = await api.leaderboard();
-    setRows(res.leaderboard);
-    return res.leaderboard;
-  }
 
   useEffect(() => {
-    const admin = getStoredUser()?.role === "ADMIN";
-    setIsAdmin(admin);
     let cancelled = false;
     (async () => {
       try {
-        const board = await loadLeaderboard();
+        const res = await api.leaderboard();
         if (cancelled) return;
-        if (board[0]) setSelected(board[0]);
-        if (admin) {
-          const teamsRes = await api.teams();
-          if (cancelled) return;
-          setTeams(teamsRes.teams);
-          if (teamsRes.teams[0]) setTeamId(teamsRes.teams[0].id);
-        }
+        setRows(res.leaderboard);
+        if (res.leaderboard[0]) setSelected(res.leaderboard[0]);
       } catch (err) {
         if (!cancelled) {
           setError(
@@ -76,40 +53,6 @@ export default function LeaderboardPage() {
       cancelled = true;
     };
   }, []);
-
-  async function publishScore() {
-    if (!teamId) {
-      toast("Select a team", "error");
-      return;
-    }
-    const value = Number(score);
-    if (!Number.isFinite(value) || value < 0 || value > 100) {
-      toast("Enter a score between 0 and 100", "error");
-      return;
-    }
-    setSaving(true);
-    try {
-      const res = await api.setLeaderboardScore({
-        teamId,
-        score: value,
-      });
-      setRows(res.leaderboard);
-      const updated =
-        res.leaderboard.find((r) => r.teamId === teamId) ||
-        res.leaderboard[0] ||
-        null;
-      setSelected(updated);
-      setScore("");
-      toast("Leaderboard score published", "success");
-    } catch (err) {
-      toast(
-        err instanceof Error ? err.message : "Could not publish score",
-        "error"
-      );
-    } finally {
-      setSaving(false);
-    }
-  }
 
   if (loading) {
     return <PageLoader label="Loading leaderboard…" />;
@@ -131,71 +74,15 @@ export default function LeaderboardPage() {
     <div className="space-y-8">
       <PortalPageHeader
         title="Leaderboard"
-        description={
-          isAdmin
-            ? "Publish team scores for Demo Day. Rankings update instantly for everyone."
-            : "Live programme rankings — scores are published by administrators."
-        }
+        description="Rankings are the average of judge scores on submitted projects."
       />
-
-      {isAdmin && (
-        <Card className="space-y-4 border-brand/20 bg-gradient-to-br from-brand/8 to-transparent">
-          <div className="flex items-start gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand/15 text-brand">
-              <Trophy className="h-5 w-5" />
-            </span>
-            <div>
-              <h2 className="text-lg font-semibold text-fg">Publish a score</h2>
-              <p className="mt-1 text-sm text-fg-muted">
-                Only administrators can set or update team scores.
-              </p>
-            </div>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <label className="block text-sm">
-              <span className="mb-1.5 block text-fg-muted">Team</span>
-              <select
-                value={teamId}
-                onChange={(e) => setTeamId(e.target.value)}
-                className="h-11 w-full rounded-2xl border border-line bg-input px-4 text-sm text-fg outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/20"
-              >
-                {teams.length === 0 && <option value="">No teams</option>}
-                {teams.map((t) => (
-                  <option key={t.id} value={t.id}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Input
-              label="Score (0–100)"
-              type="number"
-              min={0}
-              max={100}
-              value={score}
-              onChange={(e) => setScore(e.target.value)}
-              placeholder="85"
-            />
-            <div className="flex items-end">
-              <Button
-                className="w-full"
-                onClick={publishScore}
-                loading={saving}
-                disabled={!teamId}
-              >
-                {saving ? "Publishing…" : "Publish score"}
-              </Button>
-            </div>
-          </div>
-        </Card>
-      )}
 
       {rows.length === 0 ? (
         <Card className="py-16 text-center">
           <Trophy className="mx-auto h-10 w-10 text-fg-subtle" />
           <p className="mt-4 text-fg-muted">
-            No scores published yet
-            {isAdmin ? " — use Publish a score above." : "."}
+            No judge scores yet. Rankings appear after judges score submitted
+            projects.
           </p>
         </Card>
       ) : (

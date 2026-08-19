@@ -19,13 +19,15 @@ import {
   MessagesSquare,
   MoreHorizontal,
   X,
+  Gavel,
+  UserPlus,
 } from "lucide-react";
 import { BrandMark } from "@/components/brand-logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
-import { clearSession, getStoredUser, type AuthRole } from "@/lib/auth";
+import { clearSession, getStoredUser, roleLabel, type AuthRole } from "@/lib/auth";
 
 type NavItem = { href: string; label: string; icon: typeof LayoutDashboard };
 
@@ -54,7 +56,15 @@ const adminNav: NavItem[] = [
   { href: "/admin/participants", label: "Participants", icon: UserRound },
   { href: "/admin/teams", label: "Teams", icon: Users },
   { href: "/admin/mentors", label: "Assign Mentors", icon: GraduationCap },
+  { href: "/admin/invites", label: "Invite staff", icon: UserPlus },
   { href: "/admin/submissions", label: "Project Reviews", icon: Upload },
+  { href: "/announcements", label: "Announcements", icon: Bell },
+  { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
+];
+
+const judgeNav: NavItem[] = [
+  { href: "/judge", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/judge/reviews", label: "Score projects", icon: Gavel },
   { href: "/announcements", label: "Announcements", icon: Bell },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
 ];
@@ -69,6 +79,7 @@ const participantMobile: NavItem[] = [
 function navForRole(role: AuthRole | null): NavItem[] {
   if (role === "ADMIN") return adminNav;
   if (role === "MENTOR") return mentorNav;
+  if (role === "JUDGE") return judgeNav;
   if (role === "PARTICIPANT") return participantNav;
   return [];
 }
@@ -78,7 +89,7 @@ function mobilePrimaryForRole(role: AuthRole | null): NavItem[] {
     return [
       { href: "/admin", label: "Home", icon: LayoutDashboard },
       { href: "/admin/teams", label: "Teams", icon: Users },
-      { href: "/announcements", label: "News", icon: Bell },
+      { href: "/admin/invites", label: "Invite", icon: UserPlus },
       { href: "/admin/submissions", label: "Files", icon: Upload },
     ];
   }
@@ -87,6 +98,14 @@ function mobilePrimaryForRole(role: AuthRole | null): NavItem[] {
       { href: "/mentor", label: "Home", icon: LayoutDashboard },
       { href: "/mentor/reviews", label: "Reviews", icon: Upload },
       { href: "/mentor-chat", label: "Chat", icon: MessageSquare },
+      { href: "/announcements", label: "News", icon: Bell },
+    ];
+  }
+  if (role === "JUDGE") {
+    return [
+      { href: "/judge", label: "Home", icon: LayoutDashboard },
+      { href: "/judge/reviews", label: "Score", icon: Gavel },
+      { href: "/leaderboard", label: "Board", icon: Trophy },
       { href: "/announcements", label: "News", icon: Bell },
     ];
   }
@@ -188,11 +207,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   {displayName || "Account"}
                 </p>
                 <p className="truncate text-xs text-fg-subtle">
-                  {role === "ADMIN"
-                    ? "Administrator"
-                    : role === "MENTOR"
-                      ? "Mentor"
-                      : "Participant"}
+                  {roleLabel(role)}
                 </p>
               </div>
             </div>

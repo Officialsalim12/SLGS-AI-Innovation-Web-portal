@@ -61,7 +61,7 @@ export default function AnnouncementsPage() {
     }
     setPosting(true);
     try {
-      await api.createAnnouncement({
+      const result = await api.createAnnouncement({
         title: title.trim(),
         body: body.trim(),
         pinned,
@@ -71,7 +71,24 @@ export default function AnnouncementsPage() {
       setBody("");
       setPinned(false);
       await load();
-      toast("Announcement published", "success");
+      if (result.emailError && result.emailed === 0) {
+        toast(
+          "Announcement published, but emails could not be sent.",
+          "error"
+        );
+      } else if (result.emailError) {
+        toast(
+          `Announcement published. Emailed ${result.emailed} of ${result.recipients}.`,
+          "success"
+        );
+      } else if (result.recipients === 0) {
+        toast("Announcement published.", "success");
+      } else {
+        toast(
+          `Announcement published. ${result.emailed} ${result.emailed === 1 ? "person was" : "people were"} emailed.`,
+          "success"
+        );
+      }
     } catch (err) {
       toast(
         err instanceof Error ? err.message : "Could not publish announcement",
@@ -103,7 +120,7 @@ export default function AnnouncementsPage() {
         title="Announcements"
         description={
           isAdmin
-            ? "Post updates for all participants and mentors."
+            ? "Post updates for the portal. Everyone with a verified email is notified and emailed."
             : "Updates posted by administrators."
         }
       />
@@ -113,7 +130,7 @@ export default function AnnouncementsPage() {
           <div>
             <h2 className="text-lg font-semibold text-fg">New announcement</h2>
             <p className="mt-1 text-sm text-fg-muted">
-              Only administrators can publish announcements.
+              Recipients get this by email, with a link to read the full post.
             </p>
           </div>
           <Input

@@ -1,3 +1,6 @@
 {
-    "prisma.pinToPrisma6": true
+    "prisma.pinToPrisma6": true,
+    "typescript.tsdk": "frontend/node_modules/typescript/lib",
+    "typescript.enablePromptUseWorkspaceTsdk": true,
+    "eslint.workingDirectories": ["frontend", "backend"]
 }

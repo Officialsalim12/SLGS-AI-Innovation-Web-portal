@@ -15,6 +15,7 @@ import { api } from "@/lib/api";
 import {
   dashboardForRole,
   getToken,
+  roleLabel,
   saveSession,
   type AuthRole,
   type AuthUser,
@@ -56,9 +57,16 @@ const adminNotifications = [
   "System alerts",
 ];
 
+const judgeNotifications = [
+  "Pending submissions",
+  "Admin announcements",
+  "Leaderboard updates",
+];
+
 function notificationsForRole(role: AuthRole | null) {
   if (role === "ADMIN") return adminNotifications;
   if (role === "MENTOR") return mentorNotifications;
+  if (role === "JUDGE") return judgeNotifications;
   return participantNotifications;
 }
 
@@ -95,7 +103,7 @@ export default function SettingsPage() {
         setEmail(user.email);
         setTitle(user.title || "");
         setBio(user.bio || "");
-        if (user.role === "ADMIN") setTeam("—");
+        if (user.role === "ADMIN" || user.role === "JUDGE") setTeam("—");
         else if (user.role === "MENTOR") {
           const names = (res.mentorTeams || []).map((t) => t.name);
           setMentorTeams(names);
@@ -189,12 +197,7 @@ export default function SettingsPage() {
     }
   }
 
-  const roleLabel =
-    role === "ADMIN"
-      ? "Administrator"
-      : role === "MENTOR"
-        ? "Mentor"
-        : "Participant";
+  const displayRole = roleLabel(role);
 
   if (loading) {
     return <PageLoader label="Loading settings…" />;
@@ -232,7 +235,7 @@ export default function SettingsPage() {
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-xl font-semibold text-fg">{name}</h2>
-                <Badge variant="purple">{roleLabel}</Badge>
+                <Badge variant="purple">{displayRole}</Badge>
               </div>
               <p className="mt-1 truncate text-sm text-fg-muted">{email}</p>
               {role === "PARTICIPANT" && (
@@ -267,7 +270,9 @@ export default function SettingsPage() {
                   ? "Frontend Developer"
                   : role === "MENTOR"
                     ? "Lead Mentor"
-                    : "Administrator"
+                    : role === "JUDGE"
+                      ? "Judge"
+                      : "Administrator"
               }
             />
             {role === "PARTICIPANT" && (

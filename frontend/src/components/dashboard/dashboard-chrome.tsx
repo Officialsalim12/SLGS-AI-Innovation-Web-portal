@@ -58,7 +58,7 @@ export function DashboardHero({
   subtitle,
   meta = [],
   daysRemaining,
-  daysLabel = "Until 21 August 2026",
+  daysLabel = "Until 20 August 2026",
 }: {
   name: string;
   title: string;

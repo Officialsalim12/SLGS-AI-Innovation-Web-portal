@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { GraduationCap, Shield } from "lucide-react";
+import { GraduationCap, Gavel, Shield } from "lucide-react";
 import {
   AuthButton,
   AuthLink,
@@ -16,7 +16,7 @@ import {
   getStoredUser,
 } from "@/lib/auth";
 
-type PortalKind = "MENTOR" | "ADMIN";
+type PortalKind = "MENTOR" | "ADMIN" | "JUDGE";
 
 const copy: Record<
   PortalKind,
@@ -41,11 +41,20 @@ const copy: Record<
   ADMIN: {
     title: "Admin Portal",
     description:
-      "Sign in with your administrator account to manage participants, teams, mentors, and submissions.",
+      "Sign in with your administrator account to manage participants, teams, mentors, and invitations.",
     eyebrow: "Administrator",
     loginHref: "/login?portal=admin",
     registerHref: "/register?portal=participant",
     icon: Shield,
+  },
+  JUDGE: {
+    title: "Judge Portal",
+    description:
+      "Sign in after an administrator invites you. Complete signup from your email, then score submissions.",
+    eyebrow: "Judge",
+    loginHref: "/login?portal=judge",
+    registerHref: "/portal/judge",
+    icon: Gavel,
   },
 };
 
@@ -106,8 +115,10 @@ export function PortalGateway({ kind }: { kind: PortalKind }) {
           </span>
           <p className="pt-1.5 text-sm leading-relaxed text-fg-muted">
             {kind === "ADMIN"
-              ? "Use the administrator credentials provided by the programme organisers."
-              : "Mentors self-register, then wait for an admin to assign teams."}
+              ? "Admins are invited by an existing administrator. Use the invite link from your email, or sign in if you already completed signup."
+              : kind === "JUDGE"
+                ? "Judges are invited by email. Open the invite link we sent you to finish signup, then sign in here."
+                : "Mentors self-register, then wait for an admin to assign teams."}
           </p>
         </div>
         <AuthButton type="button" onClick={() => router.push(meta.loginHref)}>

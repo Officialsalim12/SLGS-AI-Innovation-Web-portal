@@ -18,6 +18,7 @@ import { PageLoader } from "@/components/ui/spinner";
 import { api } from "@/lib/api";
 import { toast } from "@/components/ui/toast";
 import {
+  breakdownLine,
   clampCriterion,
   emptyScoreBreakdown,
   scoringCriteria,
@@ -33,9 +34,11 @@ const fileIcon: Record<string, typeof Github> = {
   repo: Github,
   demo: Globe,
   pitch: Presentation,
+  slides: Presentation,
   video: Video,
   docs: FileText,
   prototype: Globe,
+  zip: FileText,
 };
 
 function statusLabel(status: string) {
@@ -85,6 +88,8 @@ export function SubmissionReviewPanel({
 }) {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [canScore, setCanScore] = useState(false);
+  const [canReopen, setCanReopen] = useState(false);
+  const [canViewJudgeScores, setCanViewJudgeScores] = useState(false);
   const [active, setActive] = useState("");
   const [comment, setComment] = useState("");
   const [breakdown, setBreakdown] = useState<ScoreBreakdown>(emptyScoreBreakdown());
@@ -96,6 +101,8 @@ export function SubmissionReviewPanel({
     const res = await api.adminSubmissions();
     setSubmissions(res.submissions);
     setCanScore(Boolean(res.canScore));
+    setCanReopen(Boolean(res.canReopen));
+    setCanViewJudgeScores(Boolean(res.canViewJudgeScores));
     return res.submissions;
   }
 
@@ -152,7 +159,7 @@ export function SubmissionReviewPanel({
         }
       }
       if (scoreTotal <= 0) {
-        toast("Enter scores for the four judging criteria", "error");
+        toast("Enter scores for each SMART criterion", "error");
         return;
       }
     }
@@ -160,21 +167,26 @@ export function SubmissionReviewPanel({
     try {
       await api.updateSubmission({
         id: item.id,
-        status: opts.status || item.status,
+        status:
+          opts.status ||
+          (opts.publishScore && item.status === "SUBMITTED"
+            ? "UNDER_REVIEW"
+            : item.status),
         notes: comment.trim() || undefined,
         ...(opts.publishScore
           ? {
-              solutionDevelopment: breakdown.solutionDevelopment,
-              challengeRequirements: breakdown.challengeRequirements,
-              presentation: breakdown.presentation,
-              communication: breakdown.communication,
+              specific: breakdown.specific,
+              measurable: breakdown.measurable,
+              achievable: breakdown.achievable,
+              relevant: breakdown.relevant,
+              timeBound: breakdown.timeBound,
               score: scoreTotal,
             }
           : {}),
       });
       toast(
         opts.publishScore
-          ? `Score published (${scoreTotal}/100) — team notified`
+          ? `Your score saved (${scoreTotal}/100)`
           : isReopen
             ? "Submission reopened and feedback sent to the team"
             : opts.status === "UNDER_REVIEW"
@@ -220,8 +232,10 @@ export function SubmissionReviewPanel({
         <p className="mt-1 text-sm text-fg-muted">
           {description ||
             (canScore
-              ? "Open team files, leave feedback, and publish scores using the four judging criteria."
-              : "Open assigned team files, leave feedback, and mark projects in review. Admins publish final scores.")}
+              ? "Open each team’s files, then record your own scores."
+              : canViewJudgeScores
+                ? "Open submitted files and see each judge’s scores. Administrators do not grade."
+                : "Open assigned team files, leave feedback, and mark projects in review.")}
         </p>
       </div>
 
@@ -253,8 +267,21 @@ export function SubmissionReviewPanel({
                   </Badge>
                   {s.score != null && (
                     <span className="text-xs text-purple-light">
-                      Score {s.score}
+                      {canViewJudgeScores
+                        ? `Avg ${s.score}`
+                        : canScore
+                          ? `Your score ${s.score}`
+                          : `Score ${s.score}`}
                     </span>
+                  )}
+                  {canViewJudgeScores && (s.judgeCount ?? 0) > 0 && (
+                    <span className="text-xs text-fg-subtle">
+                      {s.judgeCount} judge
+                      {s.judgeCount === 1 ? "" : "s"}
+                    </span>
+                  )}
+                  {canScore && s.score == null && (
+                    <span className="text-xs text-fg-subtle">Not scored</span>
                   )}
                 </div>
               </button>
@@ -277,17 +304,18 @@ export function SubmissionReviewPanel({
                     <>
                       <span>·</span>
                       <span className="text-purple-light">
-                        Current score {item.score}/100
+                        {canViewJudgeScores
+                          ? `Average ${item.score}/100`
+                          : canScore
+                            ? `Your score ${item.score}/100`
+                            : `Score ${item.score}/100`}
                       </span>
                     </>
                   )}
                 </p>
-                {item.breakdown && (
+                {canScore && item.breakdown && (
                   <p className="mt-1 text-xs text-fg-subtle">
-                    Dev {item.breakdown.solutionDevelopment}/40 · Req{" "}
-                    {item.breakdown.challengeRequirements}/25 · Pitch{" "}
-                    {item.breakdown.presentation}/20 · Team{" "}
-                    {item.breakdown.communication}/15
+                    {breakdownLine(item.breakdown)}
                   </p>
                 )}
                 {item.description && (
@@ -323,6 +351,13 @@ export function SubmissionReviewPanel({
                                 url: item.demo,
                               }
                             : null,
+                          typeof item.pitch === "string" && item.pitch
+                            ? {
+                                key: "pitch",
+                                label: "Pitch Deck",
+                                url: item.pitch,
+                              }
+                            : null,
                           typeof item.video === "string" && item.video
                             ? {
                                 key: "video",
@@ -335,6 +370,20 @@ export function SubmissionReviewPanel({
                                 key: "docs",
                                 label: "Documentation",
                                 url: item.docs,
+                              }
+                            : null,
+                          typeof item.prototype === "string" && item.prototype
+                            ? {
+                                key: "prototype",
+                                label: "Prototype",
+                                url: item.prototype,
+                              }
+                            : null,
+                          typeof item.zip === "string" && item.zip
+                            ? {
+                                key: "zip",
+                                label: "Project zip",
+                                url: item.zip,
                               }
                             : null,
                         ] as Array<{
@@ -390,7 +439,12 @@ export function SubmissionReviewPanel({
                   })}
                   {(!item.files || item.files.length === 0) &&
                     !item.repo &&
-                    !item.demo && (
+                    !item.demo &&
+                    !item.pitch &&
+                    !item.video &&
+                    !item.docs &&
+                    !item.prototype &&
+                    !item.zip && (
                       <p className="text-sm text-fg-muted sm:col-span-2">
                         No file links attached yet.
                       </p>
@@ -398,21 +452,25 @@ export function SubmissionReviewPanel({
                 </div>
               </div>
 
-              <Textarea
-                label="Comments / Feedback"
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                rows={4}
-                placeholder="Share review notes for the team (required when reopening)"
-              />
-
               {canScore ? (
-                <div className="space-y-3 rounded-xl border border-line bg-surface-muted p-4">
+                <>
+                  <Textarea
+                    label="Notes with your score"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    rows={4}
+                    placeholder="Optional notes for this score"
+                  />
+                  <div className="space-y-3 rounded-xl border border-line bg-surface-muted p-4">
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
                       <h3 className="text-sm font-semibold text-fg">
-                        Setup score by criteria
+                        SMART score
                       </h3>
+                      <p className="mt-1 text-xs text-fg-subtle">
+                        Specific, Measurable, Achievable, Relevant, Time-bound.
+                        Only you can see or edit these marks.
+                      </p>
                     </div>
                     <p className="font-display text-2xl font-semibold text-purple-light">
                       {scoreTotal}
@@ -423,7 +481,9 @@ export function SubmissionReviewPanel({
                     {scoringCriteria.map((c) => (
                       <label key={c.key} className="block text-sm">
                         <span className="mb-1.5 flex items-center justify-between gap-2 text-fg-muted">
-                          <span className="min-w-0 truncate">{c.name}</span>
+                          <span className="min-w-0 truncate">
+                            {c.letter} — {c.name}
+                          </span>
                           <span className="shrink-0 text-xs">
                             max {c.weight}
                           </span>
@@ -455,12 +515,12 @@ export function SubmissionReviewPanel({
                       loading={busy}
                       onClick={() =>
                         saveReview({
-                          status: "FINAL",
+                          status: "UNDER_REVIEW",
                           publishScore: true,
                         })
                       }
                     >
-                      Publish score
+                      Save my score
                     </Button>
                     <Button
                       variant="outline"
@@ -471,32 +531,111 @@ export function SubmissionReviewPanel({
                     >
                       Mark in review
                     </Button>
-                    <Button
-                      variant="ghost"
-                      loading={busy}
-                      onClick={() => saveReview({ status: "DRAFT" })}
-                    >
-                      Reopen &amp; send feedback
-                    </Button>
                   </div>
                 </div>
+                </>
               ) : (
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    loading={busy}
-                    disabled={!comment.trim()}
-                    onClick={() => saveReview({ status: "UNDER_REVIEW" })}
-                  >
-                    Send feedback
-                  </Button>
-                  <Button
-                    variant="outline"
-                    loading={busy}
-                    onClick={() => saveReview({ status: "UNDER_REVIEW" })}
-                  >
-                    Mark in review
-                  </Button>
-                </div>
+                <>
+                  {canViewJudgeScores && (
+                    <div className="space-y-3">
+                      <div>
+                        <h3 className="text-sm font-semibold text-fg">
+                          Judge scores
+                        </h3>
+                        <p className="mt-1 text-xs text-fg-subtle">
+                          Each judge scores with SMART. The leaderboard uses
+                          the average.
+                        </p>
+                      </div>
+                      {(item.judgeScores || []).length === 0 ? (
+                        <p className="rounded-xl border border-line bg-surface-muted px-4 py-3 text-sm text-fg-muted">
+                          No judge has scored this project yet.
+                        </p>
+                      ) : (
+                        <div className="space-y-3">
+                          {(item.judgeScores || []).map((entry) => (
+                            <div
+                              key={entry.judgeId}
+                              className="rounded-xl border border-line bg-surface-muted p-4"
+                            >
+                              <div className="flex flex-wrap items-start justify-between gap-2">
+                                <div>
+                                  <p className="text-sm font-semibold text-fg">
+                                    {entry.judgeName}
+                                  </p>
+                                  <p className="mt-0.5 text-xs text-fg-subtle">
+                                    {formatTimestamp(entry.updatedAt)}
+                                  </p>
+                                </div>
+                                <p className="font-display text-2xl font-semibold text-purple-light">
+                                  {entry.total}
+                                  <span className="text-sm text-fg-subtle">
+                                    /100
+                                  </span>
+                                </p>
+                              </div>
+                              {entry.breakdown && (
+                                <dl className="mt-3 grid gap-2 sm:grid-cols-2">
+                                  {scoringCriteria.map((c) => (
+                                    <div
+                                      key={c.key}
+                                      className="flex items-baseline justify-between gap-2 text-sm"
+                                    >
+                                      <dt className="text-fg-muted">
+                                        {c.letter} — {c.name}
+                                      </dt>
+                                      <dd className="shrink-0 font-medium text-fg">
+                                        {entry.breakdown?.[c.key] ?? 0}/
+                                        {c.weight}
+                                      </dd>
+                                    </div>
+                                  ))}
+                                </dl>
+                              )}
+                              {entry.notes && (
+                                <p className="mt-3 whitespace-pre-wrap text-sm text-fg-muted">
+                                  {entry.notes}
+                                </p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  <Textarea
+                    label="Comments / Feedback"
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    rows={4}
+                    placeholder="Share review notes for the team (required when reopening)"
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      loading={busy}
+                      disabled={!comment.trim()}
+                      onClick={() => saveReview({ status: "UNDER_REVIEW" })}
+                    >
+                      Send feedback
+                    </Button>
+                    <Button
+                      variant="outline"
+                      loading={busy}
+                      onClick={() => saveReview({ status: "UNDER_REVIEW" })}
+                    >
+                      Mark in review
+                    </Button>
+                    {canReopen && (
+                      <Button
+                        variant="ghost"
+                        loading={busy}
+                        onClick={() => saveReview({ status: "DRAFT" })}
+                      >
+                        Reopen &amp; send feedback
+                      </Button>
+                    )}
+                  </div>
+                </>
               )}
             </>
           ) : (

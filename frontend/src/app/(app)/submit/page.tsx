@@ -62,6 +62,7 @@ function looksLikeUpload(url: string) {
 export default function SubmitPage() {
   const [step, setStep] = useState(0);
   const [done, setDone] = useState(false);
+  const [isLead, setIsLead] = useState<boolean | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -73,6 +74,7 @@ export default function SubmitPage() {
       try {
         const res = await api.submission();
         if (cancelled) return;
+        setIsLead(Boolean(res.isLead));
         const s = res.submission;
         if (s) {
           const video = str(s.videoUrl) || str(s.video);
@@ -207,11 +209,47 @@ export default function SubmitPage() {
         </div>
         <h1 className="text-3xl font-semibold text-fg">Submission locked</h1>
         <p className="mt-3 text-fg-muted">
-          Only administrators can reopen submissions. Good luck on Demo Day.
+          {isLead === false
+            ? "Your Project Lead submitted this project. Only administrators can reopen it."
+            : "Only administrators can reopen submissions. Good luck on Demo Day."}
         </p>
         <Button className="mt-8" onClick={() => (window.location.href = "/dashboard")}>
           Back to dashboard
         </Button>
+      </div>
+    );
+  }
+
+  if (isLead === false) {
+    return (
+      <div className="mx-auto max-w-lg space-y-4 py-10">
+        <h1 className="font-display text-2xl font-semibold text-fg sm:text-3xl">
+          Project Submission
+        </h1>
+        <Card>
+          <p className="text-sm leading-relaxed text-fg-muted">
+            Only the <span className="font-semibold text-fg">Project Lead</span>{" "}
+            can submit the team project. You can review the workspace and board,
+            but submission is locked for members.
+          </p>
+          {form.name ? (
+            <p className="mt-3 text-sm text-fg">
+              Current project:{" "}
+              <span className="font-medium">{form.name}</span>
+            </p>
+          ) : (
+            <p className="mt-3 text-sm text-fg-subtle">
+              No submission has been started yet.
+            </p>
+          )}
+          <Button
+            className="mt-6"
+            variant="outline"
+            onClick={() => (window.location.href = "/dashboard")}
+          >
+            Back to dashboard
+          </Button>
+        </Card>
       </div>
     );
   }

@@ -65,6 +65,101 @@ async function sendVerificationCodeEmail({ toEmail, toName, code }) {
   });
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+async function sendInviteEmail({
+  toEmail,
+  toName,
+  role,
+  inviterName,
+  signupUrl,
+}) {
+  const roleLabel = role === "ADMIN" ? "administrator" : "judge";
+  const roleTitle = role === "ADMIN" ? "Administrator" : "Judge";
+  const greeting = toName || "there";
+  const fromName = inviterName || "the programme organisers";
+  const subject = `You're invited as a ${roleLabel}`;
+  const textContent = `Hi ${greeting},
+
+${fromName} invited you to join the KNS and SLGS AI Innovation Bootcamp & Challenge as a ${roleLabel}.
+
+Complete your signup here:
+${signupUrl}
+
+This link expires in 7 days. If you were not expecting this invitation, you can ignore this email.`;
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #0f172a;">
+      <p>Hi ${escapeHtml(greeting)},</p>
+      <p>${escapeHtml(fromName)} invited you to join the <strong>KNS and SLGS AI Innovation Bootcamp &amp; Challenge</strong> as a <strong>${escapeHtml(roleTitle)}</strong>.</p>
+      <p>Use the button below to set your name and password. After that you can open your ${escapeHtml(roleLabel)} dashboard.</p>
+      <p style="margin: 28px 0;">
+        <a href="${escapeHtml(signupUrl)}" style="background:#0f766e;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:700;display:inline-block;">Complete signup</a>
+      </p>
+      <p style="font-size: 13px; color: #334155;">If the button does not work, copy this link into your browser:<br />${escapeHtml(signupUrl)}</p>
+      <p style="color: #64748b; font-size: 13px;">This invitation expires in 7 days. If you were not expecting it, you can ignore this email.</p>
+    </div>
+  `;
+
+  return sendBrevoEmail({
+    toEmail,
+    toName: toName || toEmail,
+    subject,
+    htmlContent,
+    textContent,
+  });
+}
+
+async function sendAnnouncementEmail({
+  toEmail,
+  toName,
+  title,
+  preview,
+  announcementUrl,
+}) {
+  const greeting = toName || "there";
+  const subject = title;
+  const previewText = String(preview || "").trim();
+  const textContent = `Hi ${greeting},
+
+A new announcement has been posted: ${title}
+
+${previewText}
+
+Read the full announcement here:
+${announcementUrl}`;
+  const htmlContent = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #0f172a;">
+      <p>Hi ${escapeHtml(greeting)},</p>
+      <p>A new announcement has been posted:</p>
+      <p style="font-size: 18px; font-weight: 700; margin: 16px 0 8px;">${escapeHtml(title)}</p>
+      ${
+        previewText
+          ? `<p style="color:#334155;">${escapeHtml(previewText)}</p>`
+          : ""
+      }
+      <p>Open the portal to read the full announcement.</p>
+      <p style="margin: 28px 0;">
+        <a href="${escapeHtml(announcementUrl)}" style="background:#5d2a80;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700;display:inline-block;">Read the full announcement</a>
+      </p>
+      <p style="font-size: 13px; color: #334155;">If the button does not work, copy this link into your browser:<br />${escapeHtml(announcementUrl)}</p>
+    </div>
+  `;
+
+  return sendBrevoEmail({
+    toEmail,
+    toName: toName || toEmail,
+    subject,
+    htmlContent,
+    textContent,
+  });
+}
+
 async function sendPasswordResetCodeEmail({ toEmail, toName, code }) {
   const subject = "Your password reset code";
   const textContent = `Hi ${toName || "there"},\n\nYour password reset code is ${code}.\nIt expires in 15 minutes.\n\nIf you did not request a reset, you can ignore this email.`;
@@ -91,4 +186,6 @@ module.exports = {
   sendBrevoEmail,
   sendVerificationCodeEmail,
   sendPasswordResetCodeEmail,
+  sendInviteEmail,
+  sendAnnouncementEmail,
 };

@@ -4,9 +4,10 @@ import { motion } from "framer-motion";
 import {
   AlertTriangle,
   CheckCircle2,
-  Code2,
-  MessageSquare,
-  Mic2,
+  Clock3,
+  Flag,
+  Gauge,
+  MapPinned,
   Target,
 } from "lucide-react";
 import {
@@ -16,77 +17,79 @@ import {
 
 const criteria = [
   {
-    name: "Solution Development",
-    weight: 40,
+    letter: "S",
+    name: "Specific",
+    weight: 20,
     summary:
-      "Does it work? Is it well built? Is the interface usable? Did the team do something clever?",
-    icon: Code2,
-    details: [
-      "Does the project actually run end to end?",
-      "How solid is the technical build?",
-      "Is the interface clear and easy to use?",
-      "Any creative or unusual approaches?",
-      "Is the code readable enough for someone else to follow?",
-      "Does the finished product feel complete, or half-done?",
-    ],
-    detailIntro: "Judges score this on:",
-  },
-  {
-    name: "Meeting Challenge Requirements",
-    weight: 25,
-    summary:
-      "Did the team pick a real Sierra Leone problem, from the list or their own idea, and build something that answers it?",
+      "Is the problem clear? Who is this for? What exactly did the team build?",
     icon: Target,
     details: [
-      "Does it tackle a listed challenge or a clear own idea?",
-      "Are the required deliverables in place?",
-      "Would this help a real person with a real problem?",
+      "Can they name the problem in one sentence?",
+      "Is it obvious who the project is for?",
+      "Do they know exactly what they built, not a vague idea?",
+      "Is the scope tight enough to finish in the programme?",
+    ],
+    detailIntro: "Judges look for a clear target:",
+  },
+  {
+    letter: "M",
+    name: "Measurable",
+    weight: 20,
+    summary:
+      "Can you see it working? Is there a demo or other evidence that it does what they claim?",
+    icon: Gauge,
+    details: [
+      "Does the demo show the project actually running?",
+      "Can a judge tell whether it succeeded or not?",
+      "Are claims backed by what you can see, not just slides?",
+      "Is there a simple way to know if it helped someone?",
+    ],
+    detailIntro: "Judges look for proof:",
+  },
+  {
+    letter: "A",
+    name: "Achievable",
+    weight: 20,
+    summary:
+      "Did they finish something real in the programme? Is it well built and usable?",
+    icon: Flag,
+    details: [
+      "Did they complete a working piece, not only a plan?",
+      "Is the build solid enough for someone else to use?",
+      "Is the interface clear enough to try without a long explanation?",
+      "Did they attempt something ambitious but still finish it?",
+    ],
+    detailIntro: "Judges look for a finished build:",
+  },
+  {
+    letter: "R",
+    name: "Relevant",
+    weight: 20,
+    summary:
+      "Does it answer a real Sierra Leone need, from the challenge list or their own idea?",
+    icon: MapPinned,
+    details: [
+      "Does it tackle a listed challenge or a clear local idea?",
+      "Would this help a real person in Sierra Leone?",
       "Do the builders understand the problem they chose?",
       "Is the outcome practical, not just a demo for show?",
     ],
-    detailIntro: "Ask:",
+    detailIntro: "Judges look for local fit:",
   },
   {
-    name: "Presentation & Pitching",
+    letter: "T",
+    name: "Time-bound",
     weight: 20,
     summary:
-      "Can the team explain what they built, show it working, and answer questions?",
-    icon: Mic2,
+      "Did they hit deadlines, present a complete pitch on time, and say what comes next?",
+    icon: Clock3,
     details: [
-      "What problem are you solving?",
-      "What did you build?",
-      "Show a live demo",
-      "What tools and stack did you use?",
-      "Who would this help, and how?",
-      "What would you do next if you had more time?",
+      "Was the project submitted on time?",
+      "Did the pitch stay within time and cover the work?",
+      "Does the team have a next step if they had more days?",
+      "Did they show up and finish the programme work, not rush it at the end?",
     ],
-    detailIntro: "Your pitch should cover:",
-    extras: {
-      intro: "Judges also notice:",
-      items: [
-        "Confidence",
-        "Clarity",
-        "Structure",
-        "Staying on time",
-        "Handling Q&A",
-      ],
-    },
-  },
-  {
-    name: "Communication & Teamwork",
-    weight: 15,
-    summary:
-      "How did the team work together, talk to mentors, and show up during the programme?",
-    icon: MessageSquare,
-    details: [
-      "Did the team work as a unit, not one person doing everything?",
-      "Did they check in with mentors when stuck?",
-      "Did everyone take part?",
-      "Were they professional with organizers and judges?",
-      "Did they take feedback and act on it?",
-      "Were they respectful with each other and other teams?",
-    ],
-    detailIntro: "Mentors and judges watch for:",
+    detailIntro: "Judges look for delivery on time:",
   },
 ] as const;
 
@@ -94,17 +97,17 @@ const scoreBands = [
   {
     range: "90 to 100",
     label: "Outstanding",
-    description: "Top-tier build, clear demo, and strong teamwork.",
+    description: "Clear problem, working demo, real local fit, delivered on time.",
   },
   {
     range: "80 to 89",
     label: "Excellent",
-    description: "Strong project. A few rough edges, nothing major.",
+    description: "Strong SMART scores. A few rough edges, nothing major.",
   },
   {
     range: "70 to 79",
     label: "Good",
-    description: "Works, shows real effort, and addresses a real problem.",
+    description: "Works, shows real effort, and answers a real problem.",
   },
   {
     range: "60 to 69",
@@ -114,7 +117,7 @@ const scoreBands = [
   {
     range: "Below 60",
     label: "Needs work",
-    description: "Big gaps in the build, the problem fit, or the pitch.",
+    description: "Gaps in the build, the problem fit, the evidence, or the delivery.",
   },
 ] as const;
 
@@ -133,7 +136,7 @@ export default function GradingPage() {
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <PageIntro
           title="Judging Criteria"
-          description="Judges score every project on the four areas below. A working app matters, so does how you work as a team and how clearly you explain what you built."
+          description="Judges score every project with SMART: Specific, Measurable, Achievable, Relevant, and Time-bound. Each letter is worth 20 points, for a total of 100."
         />
 
         <motion.div
@@ -147,7 +150,7 @@ export default function GradingPage() {
               <thead>
                 <tr className="border-b border-line bg-brand/[0.06]">
                   <th className="px-4 py-3.5 font-semibold text-fg sm:px-6">
-                    Criteria
+                    SMART
                   </th>
                   <th className="px-4 py-3.5 font-semibold text-fg sm:px-6">
                     Weight
@@ -164,6 +167,9 @@ export default function GradingPage() {
                     className="border-b border-line last:border-b-0"
                   >
                     <td className="px-4 py-4 font-semibold text-fg sm:px-6">
+                      <span className="mr-2 font-bold text-brand">
+                        {item.letter}
+                      </span>
                       {item.name}
                     </td>
                     <td className="whitespace-nowrap px-4 py-4 font-semibold text-brand sm:px-6">
@@ -189,6 +195,7 @@ export default function GradingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.05 }}
+                className={i === 4 ? "md:col-span-2" : undefined}
               >
                 <MarketingCard className="flex h-full flex-col p-5 sm:p-6">
                   <div className="flex items-start justify-between gap-3">
@@ -196,7 +203,7 @@ export default function GradingPage() {
                       <Icon className="h-5 w-5" />
                     </div>
                     <span className="rounded-md bg-brand px-2.5 py-1 text-xs font-bold text-white dark:text-navy">
-                      {item.weight} pts
+                      {item.letter} · {item.weight} pts
                     </span>
                   </div>
                   <h2 className="font-display mt-4 text-lg font-bold text-fg sm:text-xl">
@@ -216,23 +223,6 @@ export default function GradingPage() {
                       </li>
                     ))}
                   </ul>
-                  {"extras" in item && item.extras && (
-                    <div className="mt-5 border-t border-line pt-5">
-                      <p className="text-sm font-semibold text-fg">
-                        {item.extras.intro}
-                      </p>
-                      <ul className="mt-3 flex flex-wrap gap-2">
-                        {item.extras.items.map((extra) => (
-                          <li
-                            key={extra}
-                            className="rounded-md border border-line bg-canvas/80 px-2.5 py-1 text-xs font-medium text-fg/70"
-                          >
-                            {extra}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
                 </MarketingCard>
               </motion.div>
             );
