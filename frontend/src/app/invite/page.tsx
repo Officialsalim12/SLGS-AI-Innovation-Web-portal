@@ -21,6 +21,7 @@ import {
   roleLabel,
   saveSession,
   validatePassword,
+  type AuthRole,
 } from "@/lib/auth";
 import { setAcceptedLegal } from "@/lib/legal";
 
@@ -32,7 +33,7 @@ function InviteForm() {
   const [loadingInvite, setLoadingInvite] = useState(true);
   const [inviteError, setInviteError] = useState("");
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<"ADMIN" | "JUDGE" | "">("");
+  const [role, setRole] = useState<AuthRole | null>(null);
   const [invitedBy, setInvitedBy] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
