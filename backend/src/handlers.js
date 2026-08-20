@@ -1,12 +1,7 @@
 const { prisma } = require("./db");
 const {
-  UPLOAD_DIR,
-  ensureUploadDir,
   safeFilename,
-  publicUploadUrl,
-  crypto,
-  fs,
-  path,
+  contentTypeFromName,
 } = require("./upload");
 const { issueInvite, publicInvite, frontendBaseUrl } = require("./invite");
 const { sendAnnouncementEmail } = require("./mail/brevo");
@@ -1252,20 +1247,59 @@ async function handleUpload(req, res, body) {
     return send(res, 400, { error: "Invalid file data." });
   }
 
-  const maxBytes = 8 * 1024 * 1024;
+  // Keep uploads modest so they fit through reverse proxies and Neon storage.
+  const maxBytes = 5 * 1024 * 1024;
   if (!buffer.length || buffer.length > maxBytes) {
-    return send(res, 400, { error: "File must be between 1 byte and 8 MB." });
+    return send(res, 400, {
+      error: "File must be between 1 byte and 5 MB.",
+    });
   }
 
-  ensureUploadDir();
-  const storedName = `${Date.now()}-${crypto.randomBytes(4).toString("hex")}-${filename}`;
-  fs.writeFileSync(path.join(UPLOAD_DIR, storedName), buffer);
+  const mimeType =
+    String(body.contentType || "").trim() ||
+    contentTypeFromName(filename) ||
+    "application/octet-stream";
+
+  const stored = await prisma.storedFile.create({
+    data: {
+      originalName: filename,
+      mimeType,
+      size: buffer.length,
+      data: buffer,
+      uploadedById: user.id,
+    },
+  });
+
+  const host = req.headers.host || "localhost:4000";
+  const proto =
+    req.headers["x-forwarded-proto"] ||
+    (host.includes("localhost") ? "http" : "https");
+  const url = `${proto}://${host}/api/files/${stored.id}`;
 
   send(res, 201, {
-    url: publicUploadUrl(req, storedName),
-    filename: storedName,
-    size: buffer.length,
+    url,
+    filename: stored.originalName,
+    id: stored.id,
+    size: stored.size,
   });
+}
+
+async function handleGetStoredFile(req, res, fileId) {
+  const id = String(fileId || "").trim();
+  if (!id) return send(res, 400, { error: "File id required." });
+
+  const file = await prisma.storedFile.findUnique({ where: { id } });
+  if (!file) return send(res, 404, { error: "File not found." });
+
+  const dispositionName = safeFilename(file.originalName);
+  res.writeHead(200, {
+    "Content-Type": file.mimeType || "application/octet-stream",
+    "Content-Length": file.size,
+    "Content-Disposition": `inline; filename="${dispositionName}"`,
+    "Cache-Control": "private, max-age=86400",
+    "Access-Control-Allow-Origin": "*",
+  });
+  res.end(Buffer.from(file.data));
 }
 
 async function handleAttachTaskFile(req, res, body, taskId) {
@@ -3328,6 +3362,7 @@ module.exports = {
   handleTaskComments,
   handlePostTaskComment,
   handleUpload,
+  handleGetStoredFile,
   handleAttachTaskFile,
   handleWorkspace,
   handleCreateWorkspaceSection,

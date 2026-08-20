@@ -126,7 +126,7 @@ export default function AdminJudgeResourcesPage() {
       <Card className="space-y-4">
         <CardHeader
           title="Share a resource"
-          description="Judges see this on their resources page and get an in-app notification."
+        description="Share files and links with every judge. Files are stored in the database, so you can add as many as you need (up to 5 MB each)."
         />
         <Input
           label="Title"
@@ -149,7 +149,7 @@ export default function AdminJudgeResourcesPage() {
             setFileName(next.split("/").pop() || "");
             if (next) setLink("");
           }}
-          hint="PDF, slides, or documents up to 8 MB"
+          hint="PDF, slides, or documents up to 5 MB"
         />
         <Input
           label="Or paste a link"

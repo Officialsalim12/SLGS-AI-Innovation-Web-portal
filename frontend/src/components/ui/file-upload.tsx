@@ -26,9 +26,9 @@ export function FileUploadField({
 
   async function onFile(file: File | null) {
     if (!file) return;
-    const max = 8 * 1024 * 1024;
+    const max = 5 * 1024 * 1024;
     if (file.size > max) {
-      toast("File must be under 8 MB", "error");
+      toast("File must be under 5 MB", "error");
       return;
     }
     setUploading(true);

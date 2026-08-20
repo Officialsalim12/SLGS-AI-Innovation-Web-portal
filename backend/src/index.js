@@ -824,6 +824,12 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    const storedFileMatch = path.match(/^\/api\/files\/([^/]+)$/);
+    if (storedFileMatch && req.method === "GET") {
+      await api.handleGetStoredFile(req, res, storedFileMatch[1]);
+      return;
+    }
+
     if (path === "/api/tasks/move" && req.method === "POST") {
       const body = await readBody(req);
       await api.handleMoveTask(req, res, body);

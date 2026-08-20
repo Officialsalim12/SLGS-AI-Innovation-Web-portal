@@ -76,6 +76,7 @@ model User {
   taskComments    TaskComment[]
   invitesSent     Invite[]        @relation("InvitedBy")
   judgeResources  JudgeResource[] @relation("JudgeResourceAuthor")
+  storedFiles     StoredFile[]    @relation("StoredFileUploader")
 
   @@index([role])
   @@map("users")
@@ -260,6 +261,21 @@ model JudgeResource {
 
   @@index([createdAt])
   @@map("judge_resources")
+}
+
+model StoredFile {
+  id           String   @id @default(cuid())
+  originalName String
+  mimeType     String
+  size         Int
+  data         Bytes
+  uploadedById String?
+  createdAt    DateTime @default(now())
+
+  uploadedBy User? @relation("StoredFileUploader", fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@map("stored_files")
 }
 
 model Faq {
