@@ -165,6 +165,8 @@ export const api = {
         title: string;
         body: string;
         type: string;
+        audience?: string;
+        audienceLabel?: string;
         pinned: boolean;
         author: string;
         date: string;
@@ -178,6 +180,7 @@ export const api = {
     body: string;
     type?: string;
     pinned?: boolean;
+    audience?: "general" | "mentors" | "judges" | "teams";
   }) =>
     request<{
       announcement: { id: string };
@@ -481,6 +484,43 @@ export const api = {
       body: JSON.stringify({ text, teamId }),
     }),
 
+  judgesChat: () =>
+    request<{
+      teamName?: string;
+      members?: Array<{
+        id: string;
+        name: string;
+        title?: string | null;
+        avatar?: string | null;
+      }>;
+      messages: ChatMessageDto[];
+    }>("/api/chat/judges"),
+
+  postJudgesChat: (text: string) =>
+    request<{ message: ChatMessageDto }>("/api/chat/judges", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
+
+  staffChat: () =>
+    request<{
+      teamName?: string;
+      members?: Array<{
+        id: string;
+        name: string;
+        title?: string | null;
+        avatar?: string | null;
+        role?: string;
+      }>;
+      messages: ChatMessageDto[];
+    }>("/api/chat/staff"),
+
+  postStaffChat: (text: string) =>
+    request<{ message: ChatMessageDto }>("/api/chat/staff", {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    }),
+
   reactChat: (messageId: string, emoji: string) =>
     request<{ message: ChatMessageDto }>("/api/chat/react", {
       method: "POST",
@@ -507,6 +547,24 @@ export const api = {
       submission: Record<string, unknown> | null;
       isLead?: boolean;
       canSubmit?: boolean;
+      reviewStatus?: "draft" | "pending" | "in_review" | "complete";
+      scoresPublished?: boolean;
+      publishedAverage?: number | null;
+      judgeReviews?: Array<{
+        judgeId: string;
+        judgeName: string;
+        notes: string | null;
+        updatedAt: string;
+        completed: boolean;
+        total?: number;
+        breakdown?: {
+          specific: number;
+          measurable: number;
+          achievable: number;
+          relevant: number;
+          timeBound: number;
+        } | null;
+      }>;
     }>("/api/submission"),
 
   saveSubmission: (body: Record<string, unknown>) =>
@@ -565,6 +623,7 @@ export const api = {
     request<{
       canScore?: boolean;
       canReopen?: boolean;
+      canPublishScores?: boolean;
       canViewJudgeScores?: boolean;
       canReview?: boolean;
       submissions: Array<{
@@ -574,6 +633,8 @@ export const api = {
         project: string;
         description?: string | null;
         status: string;
+        scoresPublished?: boolean;
+        scoresPublishedAt?: string | null;
         timestamp: string;
         repo?: string | null;
         demo?: string | null;
@@ -585,14 +646,34 @@ export const api = {
         zip?: string | null;
         version: string;
         score?: number | null;
+        averagePending?: number | null;
         scoreNotes?: string | null;
+        scoringCompleted?: boolean;
         judgeCount?: number;
+        completedJudgeCount?: number;
+        canPublish?: boolean;
+        judgeReviews?: Array<{
+          judgeId: string;
+          judgeName: string;
+          notes: string | null;
+          updatedAt: string;
+          completed: boolean;
+          total?: number;
+          breakdown?: {
+            specific: number;
+            measurable: number;
+            achievable: number;
+            relevant: number;
+            timeBound: number;
+          } | null;
+        }>;
         judgeScores?: Array<{
           judgeId: string;
           judgeName: string;
           total: number;
           notes: string | null;
           updatedAt: string;
+          completed?: boolean;
           breakdown: {
             specific: number;
             measurable: number;
@@ -648,6 +729,7 @@ export const api = {
 
   adminStaff: () =>
     request<{
+      meId?: string;
       invites: Array<{
         id: string;
         email: string;
@@ -675,6 +757,51 @@ export const api = {
         createdAt: string;
       }>;
     }>("/api/admin/staff"),
+
+  revokeStaff: (id: string) =>
+    request<{ ok: boolean; id: string; role: string; message?: string }>(
+      `/api/admin/staff/${id}`,
+      { method: "DELETE" }
+    ),
+
+  judgeResources: () =>
+    request<{
+      canManage?: boolean;
+      resources: Array<{
+        id: string;
+        title: string;
+        description: string | null;
+        url: string;
+        fileName: string | null;
+        author: string;
+        createdAt: string;
+      }>;
+    }>("/api/judge-resources"),
+
+  createJudgeResource: (body: {
+    title: string;
+    description?: string;
+    url: string;
+    fileName?: string;
+  }) =>
+    request<{
+      resource: {
+        id: string;
+        title: string;
+        description: string | null;
+        url: string;
+        fileName: string | null;
+        createdAt: string;
+      };
+    }>("/api/judge-resources", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+
+  deleteJudgeResource: (id: string) =>
+    request<{ ok: boolean; id: string }>(`/api/judge-resources/${id}`, {
+      method: "DELETE",
+    }),
 
   inviteStaff: (body: {
     email: string;

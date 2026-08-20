@@ -8,25 +8,22 @@ import { ChatEmptyState, ChatShell } from "@/components/chat/chat-shell";
 import { api, type ChatMessageDto } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
 import { toast } from "@/components/ui/toast";
-import { cn } from "@/lib/utils";
 
-type Member = NonNullable<
-  Awaited<ReturnType<typeof api.myTeam>>["team"]
->["members"][number];
-
-export default function TeamChatPage() {
+export default function JudgesChatPage() {
   const myId = getStoredUser()?.id;
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<ChatMessageDto[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
-  const [teamName, setTeamName] = useState("team");
+  const [members, setMembers] = useState<
+    Array<{ id: string; name: string; title?: string | null }>
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [sending, setSending] = useState(false);
 
   const loadMessages = useCallback(async () => {
-    const res = await api.teamChat();
+    const res = await api.judgesChat();
     setMessages(res.messages);
+    if (res.members) setMembers(res.members);
   }, []);
 
   function patchMessage(next: ChatMessageDto) {
@@ -43,16 +40,10 @@ export default function TeamChatPage() {
     let cancelled = false;
     (async () => {
       try {
-        const [chat, teamRes] = await Promise.all([
-          api.teamChat(),
-          api.myTeam().catch(() => null),
-        ]);
+        const res = await api.judgesChat();
         if (cancelled) return;
-        setMessages(chat.messages);
-        if (teamRes?.team) {
-          setMembers(teamRes.team.members);
-          setTeamName(teamRes.team.name);
-        }
+        setMessages(res.messages);
+        setMembers(res.members || []);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof Error ? err.message : "Could not load chat");
@@ -78,7 +69,7 @@ export default function TeamChatPage() {
     if (!message.trim() || sending) return;
     setSending(true);
     try {
-      const res = await api.postTeamChat(message.trim());
+      const res = await api.postJudgesChat(message.trim());
       setMessage("");
       patchMessage(res.message);
       await loadMessages();
@@ -108,23 +99,8 @@ export default function TeamChatPage() {
     }
   }
 
-  async function forward(messageId: string, channel: "team" | "mentor") {
-    try {
-      const res = await api.forwardChat(messageId, channel);
-      if (channel === "team") {
-        patchMessage(res.message);
-        await loadMessages();
-        toast("Forwarded in Team Chat", "success");
-      } else {
-        toast("Forwarded — open Mentorship to see it", "success");
-      }
-    } catch (err) {
-      toast(err instanceof Error ? err.message : "Could not forward", "error");
-    }
-  }
-
   if (loading) {
-    return <PageLoader label="Loading team chat…" />;
+    return <PageLoader label="Loading judges chat…" />;
   }
 
   if (error) {
@@ -135,68 +111,45 @@ export default function TeamChatPage() {
     );
   }
 
-  const otherMembers = members.filter((m) => m.id !== myId);
-
   return (
     <ChatShell
-      channelLabel="Team chat"
-      title={teamName}
-      subtitle={`Private to ${teamName} members`}
+      channelLabel="Judges"
+      title="Judges chat"
+      subtitle="Private space for judges only"
       members={members.map((m) => ({
         id: m.id,
         name: m.name,
-        online: Boolean(m.online),
-        title: m.role === "LEAD" ? "Project Lead" : "Member",
+        title: m.title || "Judge",
       }))}
       myId={myId}
-      membersHeading="Team"
+      membersHeading="Judges"
       composerValue={message}
       onComposerChange={setMessage}
       onSend={send}
       sending={sending}
-      placeholder={`Message #${teamName}`}
-      mobileStrip={
-        otherMembers.length > 0 ? (
-          <div className="flex gap-2 overflow-x-auto border-b border-line bg-card/80 px-3 py-2.5 scrollbar-thin lg:hidden">
-            {otherMembers.map((m) => (
-              <div
-                key={m.id}
-                className="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface-muted px-2.5 py-1 text-xs text-fg"
-              >
-                <span
-                  className={cn(
-                    "h-1.5 w-1.5 rounded-full",
-                    m.online ? "bg-emerald" : "bg-fg-subtle"
-                  )}
-                />
-                {m.name.split(" ")[0]}
-              </div>
-            ))}
-          </div>
-        ) : null
-      }
+      placeholder="Message the judges…"
       empty={
         messages.length === 0 ? (
           <ChatEmptyState
-            title="Start the team conversation"
-            description="Share updates, questions, and progress with your teammates here."
+            title="No messages yet"
+            description="Coordinate scoring and share notes with other judges here."
           />
         ) : null
       }
     >
       {messages.map((m, index) => {
         const prev = messages[index - 1];
-        const showMeta = !prev || prev.userId !== m.userId || prev.mine !== m.mine;
+        const showMeta =
+          !prev || prev.userId !== m.userId || prev.mine !== m.mine;
         return (
           <ChatMessageBubble
             key={m.id}
             message={m}
             currentChannel="team"
             showMeta={showMeta}
-            forwardTargets={["team", "mentor"]}
+            forwardTargets={[]}
             onReact={react}
             onDelete={remove}
-            onForward={forward}
           />
         );
       })}

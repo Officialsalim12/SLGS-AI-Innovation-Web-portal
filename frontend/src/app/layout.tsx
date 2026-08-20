@@ -50,7 +50,7 @@ const themeInitScript = `
   try {
     var path = (location.pathname || '/').split('?')[0];
     var portalPrefixes = [
-      '/dashboard','/team','/team-chat','/mentor-chat','/workspace','/kanban',
+      '/dashboard','/team','/team-chat','/mentor-chat','/judge','/judge-chat','/workspace','/kanban',
       '/announcements','/leaderboard','/submit','/settings','/notifications',
       '/onboarding','/mentor','/admin'
     ];

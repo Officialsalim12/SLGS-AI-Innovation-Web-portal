@@ -6,7 +6,7 @@ export default function AdminSubmissionsPage() {
   return (
     <SubmissionReviewPanel
       title="Project Reviews"
-      description="Open submitted files and see how each judge scored the team. Administrators do not grade projects."
+      description="Open submitted files and see each judge’s grades. Publish when ready — you cannot change scores."
     />
   );
 }

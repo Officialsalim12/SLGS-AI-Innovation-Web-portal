@@ -40,6 +40,7 @@ const PORTAL_PREFIXES = [
   "/onboarding",
   "/mentor",
   "/admin",
+  "/judge",
 ];
 
 export function isPortalPath(pathname: string) {

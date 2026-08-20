@@ -120,34 +120,33 @@ async function sendAnnouncementEmail({
   toName,
   title,
   preview,
-  announcementUrl,
+  dashboardUrl,
 }) {
   const greeting = toName || "there";
   const subject = title;
   const previewText = String(preview || "").trim();
   const textContent = `Hi ${greeting},
 
-A new announcement has been posted: ${title}
+${title}
 
 ${previewText}
 
-Read the full announcement here:
-${announcementUrl}`;
+Open your dashboard to read the full announcement:
+${dashboardUrl}`;
   const htmlContent = `
     <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #0f172a;">
       <p>Hi ${escapeHtml(greeting)},</p>
-      <p>A new announcement has been posted:</p>
       <p style="font-size: 18px; font-weight: 700; margin: 16px 0 8px;">${escapeHtml(title)}</p>
       ${
         previewText
           ? `<p style="color:#334155;">${escapeHtml(previewText)}</p>`
           : ""
       }
-      <p>Open the portal to read the full announcement.</p>
+      <p>This is a brief notice only. Sign in to your dashboard to read the full announcement.</p>
       <p style="margin: 28px 0;">
-        <a href="${escapeHtml(announcementUrl)}" style="background:#5d2a80;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700;display:inline-block;">Read the full announcement</a>
+        <a href="${escapeHtml(dashboardUrl)}" style="background:#5d2a80;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:8px;font-weight:700;display:inline-block;">Open dashboard</a>
       </p>
-      <p style="font-size: 13px; color: #334155;">If the button does not work, copy this link into your browser:<br />${escapeHtml(announcementUrl)}</p>
+      <p style="font-size: 13px; color: #334155;">If the button does not work, copy this link into your browser:<br />${escapeHtml(dashboardUrl)}</p>
     </div>
   `;
 

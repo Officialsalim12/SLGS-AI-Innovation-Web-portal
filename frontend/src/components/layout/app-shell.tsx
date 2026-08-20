@@ -57,6 +57,8 @@ const adminNav: NavItem[] = [
   { href: "/admin/teams", label: "Teams", icon: Users },
   { href: "/admin/mentors", label: "Assign Mentors", icon: GraduationCap },
   { href: "/admin/invites", label: "Invite staff", icon: UserPlus },
+  { href: "/admin/resources", label: "Judge resources", icon: Upload },
+  { href: "/admin/judge-chat", label: "Judges chat", icon: MessagesSquare },
   { href: "/admin/submissions", label: "Project Reviews", icon: Upload },
   { href: "/announcements", label: "Announcements", icon: Bell },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
@@ -65,6 +67,9 @@ const adminNav: NavItem[] = [
 const judgeNav: NavItem[] = [
   { href: "/judge", label: "Dashboard", icon: LayoutDashboard },
   { href: "/judge/reviews", label: "Score projects", icon: Gavel },
+  { href: "/judge/resources", label: "Resources", icon: Upload },
+  { href: "/judge/chat", label: "Judges chat", icon: MessagesSquare },
+  { href: "/judge/staff-chat", label: "Admins chat", icon: MessageSquare },
   { href: "/announcements", label: "Announcements", icon: Bell },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
 ];
@@ -105,7 +110,7 @@ function mobilePrimaryForRole(role: AuthRole | null): NavItem[] {
     return [
       { href: "/judge", label: "Home", icon: LayoutDashboard },
       { href: "/judge/reviews", label: "Score", icon: Gavel },
-      { href: "/leaderboard", label: "Board", icon: Trophy },
+      { href: "/judge/staff-chat", label: "Admins", icon: MessageSquare },
       { href: "/announcements", label: "News", icon: Bell },
     ];
   }

@@ -33,6 +33,7 @@ export default function AdminInvitesPage() {
   const [invites, setInvites] = useState<InviteRow[]>([]);
   const [admins, setAdmins] = useState<StaffPayload["admins"]>([]);
   const [judges, setJudges] = useState<StaffPayload["judges"]>([]);
+  const [meId, setMeId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -43,6 +44,7 @@ export default function AdminInvitesPage() {
     setInvites(res.invites);
     setAdmins(res.admins);
     setJudges(res.judges);
+    setMeId(res.meId || null);
   }
 
   useEffect(() => {
@@ -117,6 +119,30 @@ export default function AdminInvitesPage() {
     } catch (err) {
       toast(
         err instanceof Error ? err.message : "Could not remove invitation",
+        "error"
+      );
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function revokeAccount(id: string, kind: "ADMIN" | "JUDGE") {
+    const label = kind === "ADMIN" ? "administrator" : "judge";
+    if (
+      !window.confirm(
+        `Revoke this ${label} account? They will no longer be able to sign in.`
+      )
+    ) {
+      return;
+    }
+    setBusyId(id);
+    try {
+      const res = await api.revokeStaff(id);
+      await load();
+      toast(res.message || "Account revoked", "success");
+    } catch (err) {
+      toast(
+        err instanceof Error ? err.message : "Could not revoke account",
         "error"
       );
     } finally {
@@ -266,24 +292,52 @@ export default function AdminInvitesPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card>
-          <CardHeader title={`Administrators (${admins.length})`} />
+          <CardHeader
+            title={`Administrators (${admins.length})`}
+            description="You can revoke other admin accounts. Your own account stays protected."
+          />
           <div className="mt-3 space-y-2">
             {admins.length === 0 && (
               <p className="text-sm text-fg-muted">No administrators yet.</p>
             )}
-            {admins.map((person) => (
-              <div
-                key={person.id}
-                className="rounded-xl border border-line bg-surface-muted/80 px-4 py-3"
-              >
-                <p className="font-medium text-fg">{person.name}</p>
-                <p className="truncate text-sm text-fg-muted">{person.email}</p>
-              </div>
-            ))}
+            {admins.map((person) => {
+              const isSelf = person.id === meId;
+              return (
+                <div
+                  key={person.id}
+                  className="flex flex-col gap-3 rounded-xl border border-line bg-surface-muted/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-fg">
+                      {person.name}
+                      {isSelf ? " (you)" : ""}
+                    </p>
+                    <p className="truncate text-sm text-fg-muted">
+                      {person.email}
+                    </p>
+                  </div>
+                  {!isSelf && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="danger"
+                      loading={busyId === person.id}
+                      onClick={() => revokeAccount(person.id, "ADMIN")}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Revoke
+                    </Button>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </Card>
         <Card>
-          <CardHeader title={`Judges (${judges.length})`} />
+          <CardHeader
+            title={`Judges (${judges.length})`}
+            description="Remove a judge account if they should no longer access the portal."
+          />
           <div className="mt-3 space-y-2">
             {judges.length === 0 && (
               <p className="text-sm text-fg-muted">No judges yet.</p>
@@ -291,10 +345,22 @@ export default function AdminInvitesPage() {
             {judges.map((person) => (
               <div
                 key={person.id}
-                className="rounded-xl border border-line bg-surface-muted/80 px-4 py-3"
+                className="flex flex-col gap-3 rounded-xl border border-line bg-surface-muted/80 px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
               >
-                <p className="font-medium text-fg">{person.name}</p>
-                <p className="truncate text-sm text-fg-muted">{person.email}</p>
+                <div className="min-w-0">
+                  <p className="font-medium text-fg">{person.name}</p>
+                  <p className="truncate text-sm text-fg-muted">{person.email}</p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="danger"
+                  loading={busyId === person.id}
+                  onClick={() => revokeAccount(person.id, "JUDGE")}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Revoke
+                </Button>
               </div>
             ))}
           </div>

@@ -1,11 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import {
-  CornerUpRight,
-  SmilePlus,
-  Trash2,
-} from "lucide-react";
+import { CornerUpRight, SmilePlus, Trash2 } from "lucide-react";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 
@@ -39,17 +35,19 @@ export function ChatMessageBubble({
   onForward,
   compact = false,
   forwardTargets = ["team", "mentor"],
+  showMeta = true,
 }: {
   message: ChatMessageItem;
   currentChannel: "team" | "mentor";
   onReact: (messageId: string, emoji: string) => void | Promise<void>;
   onDelete: (messageId: string) => void | Promise<void>;
-  onForward: (
+  onForward?: (
     messageId: string,
     channel: "team" | "mentor"
   ) => void | Promise<void>;
   compact?: boolean;
   forwardTargets?: Array<"team" | "mentor">;
+  showMeta?: boolean;
 }) {
   const [reactOpen, setReactOpen] = useState(false);
   const [forwardOpen, setForwardOpen] = useState(false);
@@ -73,9 +71,8 @@ export function ChatMessageBubble({
   }, [menusOpen]);
 
   const deleted = Boolean(message.deleted);
-  const targets = forwardTargets.length
-    ? forwardTargets
-    : ([currentChannel] as Array<"team" | "mentor">);
+  const targets = forwardTargets;
+  const canForward = Boolean(onForward) && targets.length > 0;
 
   async function run(action: () => void | Promise<void>) {
     if (busy) return;
@@ -91,41 +88,58 @@ export function ChatMessageBubble({
     <div
       ref={rootRef}
       className={cn(
-        "group/msg relative flex gap-3",
-        message.mine && "flex-row-reverse"
+        "group/msg relative flex gap-2.5 px-0.5 py-0.5",
+        message.mine ? "flex-row-reverse" : "flex-row",
+        !showMeta && (message.mine ? "pr-10" : "pl-10")
       )}
       onMouseLeave={() => {
         if (!reactOpen && !forwardOpen) setActionsPinned(false);
       }}
     >
-      <Avatar name={message.user} size={compact ? "sm" : "md"} />
+      {showMeta ? (
+        <Avatar
+          name={message.user}
+          size={compact ? "sm" : "md"}
+          className="mt-5 shrink-0"
+        />
+      ) : (
+        <div className={cn("shrink-0", compact ? "w-7" : "w-9")} />
+      )}
+
       <div
         className={cn(
-          "min-w-0 max-w-[min(100%,28rem)]",
-          message.mine && "text-right"
+          "min-w-0 max-w-[min(100%,22rem)] sm:max-w-[min(100%,28rem)]",
+          message.mine && "items-end"
         )}
       >
-        <div
-          className={cn(
-            "flex flex-wrap items-baseline gap-x-2 gap-y-0.5",
-            message.mine && "justify-end"
-          )}
-        >
-          <span className="text-sm font-medium text-fg">{message.user}</span>
-          <span className="text-[10px] text-fg-subtle">{message.time}</span>
-        </div>
+        {showMeta && (
+          <div
+            className={cn(
+              "mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-1",
+              message.mine && "justify-end"
+            )}
+          >
+            <span className="text-[13px] font-semibold text-fg">
+              {message.mine ? "You" : message.user}
+            </span>
+            <span className="text-[10px] tabular-nums text-fg-subtle">
+              {message.time}
+            </span>
+          </div>
+        )}
 
         <div
           role="button"
           tabIndex={0}
           className={cn(
-            "relative mt-1 inline-block max-w-full cursor-default rounded-2xl px-3.5 py-2.5 text-left shadow-sm outline-none",
-            message.mine ? "bg-brand/12 text-fg" : "bg-card text-fg-muted",
-            deleted && "italic text-fg-subtle"
+            "relative inline-block max-w-full cursor-default px-3.5 py-2.5 text-left outline-none transition",
+            message.mine
+              ? "rounded-[1.15rem] rounded-br-md bg-brand text-white shadow-[0_8px_20px_-12px_rgba(93,42,128,0.65)]"
+              : "rounded-[1.15rem] rounded-bl-md border border-line/70 bg-card text-fg shadow-[0_6px_18px_-14px_rgba(15,23,42,0.35)]",
+            deleted && "italic opacity-70"
           )}
           onClick={() => {
             if (deleted) return;
-            // pin the action bar on tap (no hover on phones)
             setActionsPinned((v) => !v);
             setReactOpen(false);
             setForwardOpen(false);
@@ -138,27 +152,61 @@ export function ChatMessageBubble({
           }}
         >
           {message.forwarded && !deleted && (
-            <div className="mb-2 rounded-xl border border-line/70 bg-surface-muted/70 px-2.5 py-1.5">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-fg-subtle">
+            <div
+              className={cn(
+                "mb-2 rounded-xl border px-2.5 py-1.5",
+                message.mine
+                  ? "border-white/25 bg-white/10"
+                  : "border-line/70 bg-surface-muted/80"
+              )}
+            >
+              <p
+                className={cn(
+                  "text-[10px] font-semibold uppercase tracking-wider",
+                  message.mine ? "text-white/70" : "text-fg-subtle"
+                )}
+              >
                 Forwarded
                 {message.forwardedFrom?.user
                   ? ` · ${message.forwardedFrom.user}`
                   : ""}
               </p>
               {message.forwardedFrom?.text ? (
-                <p className="mt-0.5 line-clamp-3 text-xs text-fg-muted">
+                <p
+                  className={cn(
+                    "mt-0.5 line-clamp-3 text-xs",
+                    message.mine ? "text-white/85" : "text-fg-muted"
+                  )}
+                >
                   {message.forwardedFrom.text}
                 </p>
               ) : null}
             </div>
           )}
-          <p className="whitespace-pre-wrap break-words text-sm">{message.text}</p>
+          <p
+            className={cn(
+              "whitespace-pre-wrap break-words text-[14px] leading-relaxed",
+              message.mine ? "text-white" : "text-fg"
+            )}
+          >
+            {message.text}
+          </p>
+          {!showMeta && (
+            <p
+              className={cn(
+                "mt-1 text-right text-[10px] tabular-nums",
+                message.mine ? "text-white/65" : "text-fg-subtle"
+              )}
+            >
+              {message.time}
+            </p>
+          )}
         </div>
 
         {(message.reactions?.length || 0) > 0 && !deleted && (
           <div
             className={cn(
-              "mt-1.5 flex flex-wrap gap-1",
+              "mt-1 flex flex-wrap gap-1",
               message.mine && "justify-end"
             )}
           >
@@ -169,10 +217,10 @@ export function ChatMessageBubble({
                 disabled={busy}
                 onClick={() => run(() => onReact(message.id, r.emoji))}
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition",
+                  "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs shadow-sm transition",
                   r.mine
                     ? "border-brand/40 bg-brand/10 text-fg"
-                    : "border-line bg-surface-muted text-fg-muted hover:border-brand/30"
+                    : "border-line bg-card text-fg-muted hover:border-brand/30"
                 )}
               >
                 <span>{r.emoji}</span>
@@ -211,25 +259,27 @@ export function ChatMessageBubble({
               <SmilePlus className="h-3.5 w-3.5" />
               React
             </button>
-            <button
-              type="button"
-              disabled={busy}
-              aria-label="Forward"
-              aria-expanded={forwardOpen}
-              className={cn(
-                "inline-flex items-center gap-1 rounded-full border border-line bg-card px-2.5 py-1 text-xs font-medium text-fg-muted shadow-sm transition hover:bg-surface-muted hover:text-fg",
-                forwardOpen && "border-brand/40 bg-brand/10 text-fg"
-              )}
-              onClick={(e) => {
-                e.stopPropagation();
-                setForwardOpen((v) => !v);
-                setReactOpen(false);
-                setActionsPinned(true);
-              }}
-            >
-              <CornerUpRight className="h-3.5 w-3.5" />
-              Forward
-            </button>
+            {canForward && (
+              <button
+                type="button"
+                disabled={busy}
+                aria-label="Forward"
+                aria-expanded={forwardOpen}
+                className={cn(
+                  "inline-flex items-center gap-1 rounded-full border border-line bg-card px-2.5 py-1 text-xs font-medium text-fg-muted shadow-sm transition hover:bg-surface-muted hover:text-fg",
+                  forwardOpen && "border-brand/40 bg-brand/10 text-fg"
+                )}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setForwardOpen((v) => !v);
+                  setReactOpen(false);
+                  setActionsPinned(true);
+                }}
+              >
+                <CornerUpRight className="h-3.5 w-3.5" />
+                Forward
+              </button>
+            )}
             {message.mine && (
               <button
                 type="button"
@@ -277,7 +327,7 @@ export function ChatMessageBubble({
               </div>
             )}
 
-            {forwardOpen && (
+            {canForward && forwardOpen && (
               <div
                 className={cn(
                   "absolute top-full z-30 mt-1 min-w-[11rem] overflow-hidden rounded-2xl border border-line bg-card py-1 shadow-lg",
@@ -298,7 +348,7 @@ export function ChatMessageBubble({
                       e.stopPropagation();
                       setForwardOpen(false);
                       run(async () => {
-                        await onForward(message.id, channel);
+                        await onForward?.(message.id, channel);
                         setActionsPinned(false);
                       });
                     }}

@@ -67,6 +67,21 @@ export default function SubmitPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [reviewStatus, setReviewStatus] = useState<
+    "draft" | "pending" | "in_review" | "complete" | null
+  >(null);
+  const [scoresPublished, setScoresPublished] = useState(false);
+  const [publishedAverage, setPublishedAverage] = useState<number | null>(null);
+  const [judgeReviews, setJudgeReviews] = useState<
+    Array<{
+      judgeId: string;
+      judgeName: string;
+      notes: string | null;
+      updatedAt: string;
+      completed: boolean;
+      total?: number;
+    }>
+  >([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -75,6 +90,12 @@ export default function SubmitPage() {
         const res = await api.submission();
         if (cancelled) return;
         setIsLead(Boolean(res.isLead));
+        setReviewStatus(res.reviewStatus || null);
+        setScoresPublished(Boolean(res.scoresPublished));
+        setPublishedAverage(
+          typeof res.publishedAverage === "number" ? res.publishedAverage : null
+        );
+        setJudgeReviews(res.judgeReviews || []);
         const s = res.submission;
         if (s) {
           const video = str(s.videoUrl) || str(s.video);
@@ -202,17 +223,56 @@ export default function SubmitPage() {
   }
 
   if (done) {
+    const statusCopy =
+      reviewStatus === "complete" || scoresPublished
+        ? "Complete — final scores are published."
+        : reviewStatus === "in_review"
+          ? "In review — judges are grading. Feedback may appear below before scores are published."
+          : "Submitted — waiting for review.";
+
     return (
-      <div className="mx-auto flex max-w-lg flex-col items-center py-20 text-center">
+      <div className="mx-auto flex max-w-2xl flex-col items-center py-16 text-center">
         <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald/20 text-emerald-light">
           <Check className="h-10 w-10" />
         </div>
         <h1 className="text-3xl font-semibold text-fg">Submission locked</h1>
-        <p className="mt-3 text-fg-muted">
-          {isLead === false
-            ? "Your Project Lead submitted this project. Only administrators can reopen it."
-            : "Only administrators can reopen submissions. Good luck on Demo Day."}
-        </p>
+        <p className="mt-3 text-fg-muted">{statusCopy}</p>
+        {publishedAverage != null && (
+          <p className="mt-2 text-lg font-semibold text-purple-light">
+            Published average: {publishedAverage}/100
+          </p>
+        )}
+        {judgeReviews.length > 0 && (
+          <div className="mt-8 w-full space-y-3 text-left">
+            <h2 className="text-sm font-semibold text-fg">Judge reviews</h2>
+            {judgeReviews.map((review) => (
+              <Card key={review.judgeId} className="p-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-fg">
+                    {review.judgeName}
+                  </p>
+                  {review.total != null && (
+                    <span className="text-sm text-purple-light">
+                      {review.total}/100
+                    </span>
+                  )}
+                </div>
+                {review.notes ? (
+                  <p className="mt-2 whitespace-pre-wrap text-sm text-fg-muted">
+                    {review.notes}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm text-fg-subtle">
+                    Grading completed
+                    {scoresPublished
+                      ? "."
+                      : ". Score stays private until administrators publish."}
+                  </p>
+                )}
+              </Card>
+            ))}
+          </div>
+        )}
         <Button className="mt-8" onClick={() => (window.location.href = "/dashboard")}>
           Back to dashboard
         </Button>

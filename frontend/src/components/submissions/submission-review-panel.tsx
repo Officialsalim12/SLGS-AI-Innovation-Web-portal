@@ -41,16 +41,21 @@ const fileIcon: Record<string, typeof Github> = {
   zip: FileText,
 };
 
-function statusLabel(status: string) {
-  if (status === "FINAL") return "Complete";
+function statusLabel(status: string, opts?: { scoringCompleted?: boolean; scoresPublished?: boolean }) {
+  if (opts?.scoresPublished || status === "FINAL") return "Complete";
+  if (opts?.scoringCompleted) return "Completed";
   if (status === "UNDER_REVIEW") return "In review";
   if (status === "SUBMITTED") return "Pending";
-  if (status === "DRAFT") return "Draft";
+  if (status === "DRAFT") return "Reopened";
   return status;
 }
 
-function statusVariant(status: string) {
-  if (status === "FINAL") return "success" as const;
+function statusVariant(
+  status: string,
+  opts?: { scoringCompleted?: boolean; scoresPublished?: boolean }
+) {
+  if (opts?.scoresPublished || status === "FINAL") return "success" as const;
+  if (opts?.scoringCompleted) return "success" as const;
   if (status === "SUBMITTED" || status === "DRAFT") return "warning" as const;
   return "blue" as const;
 }
@@ -89,6 +94,7 @@ export function SubmissionReviewPanel({
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [canScore, setCanScore] = useState(false);
   const [canReopen, setCanReopen] = useState(false);
+  const [canPublishScores, setCanPublishScores] = useState(false);
   const [canViewJudgeScores, setCanViewJudgeScores] = useState(false);
   const [active, setActive] = useState("");
   const [comment, setComment] = useState("");
@@ -102,6 +108,7 @@ export function SubmissionReviewPanel({
     setSubmissions(res.submissions);
     setCanScore(Boolean(res.canScore));
     setCanReopen(Boolean(res.canReopen));
+    setCanPublishScores(Boolean(res.canPublishScores));
     setCanViewJudgeScores(Boolean(res.canViewJudgeScores));
     return res.submissions;
   }
@@ -143,6 +150,7 @@ export function SubmissionReviewPanel({
   async function saveReview(opts: {
     status?: string;
     publishScore?: boolean;
+    publishScores?: boolean;
   }) {
     if (!item || busy) return;
     const isReopen = opts.status === "DRAFT";
@@ -173,6 +181,7 @@ export function SubmissionReviewPanel({
             ? "UNDER_REVIEW"
             : item.status),
         notes: comment.trim() || undefined,
+        ...(opts.publishScores ? { publishScores: true } : {}),
         ...(opts.publishScore
           ? {
               specific: breakdown.specific,
@@ -185,17 +194,19 @@ export function SubmissionReviewPanel({
           : {}),
       });
       toast(
-        opts.publishScore
-          ? `Your score saved (${scoreTotal}/100)`
-          : isReopen
-            ? "Submission reopened and feedback sent to the team"
-            : opts.status === "UNDER_REVIEW"
-              ? comment.trim()
-                ? "Marked in review and feedback sent to the team"
-                : "Marked in review"
-              : comment.trim()
-                ? "Feedback saved and sent to the team"
-                : "Review saved",
+        opts.publishScores
+          ? "Judge scores published. Teams can now see the grades."
+          : opts.publishScore
+            ? `Grading completed (${scoreTotal}/100)`
+            : isReopen
+              ? "Submission reopened and feedback sent to the team"
+              : opts.status === "UNDER_REVIEW"
+                ? comment.trim()
+                  ? "Marked in review and feedback sent to the team"
+                  : "Marked in review"
+                : comment.trim()
+                  ? "Feedback saved and sent to the team"
+                  : "Review saved",
         "success"
       );
       const list = await reload();
@@ -234,7 +245,7 @@ export function SubmissionReviewPanel({
             (canScore
               ? "Open each team’s files, then record your own scores."
               : canViewJudgeScores
-                ? "Open submitted files and see each judge’s scores. Administrators do not grade."
+                ? "Review judge grades, then publish them when ready. You cannot change scores."
                 : "Open assigned team files, leave feedback, and mark projects in review.")}
         </p>
       </div>
@@ -262,25 +273,47 @@ export function SubmissionReviewPanel({
                 <p className="truncate text-sm font-medium text-fg">{s.team}</p>
                 <p className="truncate text-xs text-fg-subtle">{s.project}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <Badge variant={statusVariant(s.status)}>
-                    {statusLabel(s.status)}
+                  <Badge
+                    variant={statusVariant(s.status, {
+                      scoringCompleted: canScore && Boolean(s.scoringCompleted),
+                      scoresPublished: Boolean(s.scoresPublished),
+                    })}
+                  >
+                    {canScore
+                      ? s.scoringCompleted
+                        ? "Completed"
+                        : statusLabel(s.status)
+                      : statusLabel(s.status, {
+                          scoresPublished: Boolean(s.scoresPublished),
+                        })}
                   </Badge>
-                  {s.score != null && (
+                  {canScore && s.scoringCompleted && s.score != null && (
                     <span className="text-xs text-purple-light">
-                      {canViewJudgeScores
-                        ? `Avg ${s.score}`
-                        : canScore
-                          ? `Your score ${s.score}`
-                          : `Score ${s.score}`}
+                      Your score {s.score}
                     </span>
                   )}
-                  {canViewJudgeScores && (s.judgeCount ?? 0) > 0 && (
-                    <span className="text-xs text-fg-subtle">
-                      {s.judgeCount} judge
-                      {s.judgeCount === 1 ? "" : "s"}
+                  {canViewJudgeScores && s.scoresPublished && s.score != null && (
+                    <span className="text-xs text-purple-light">
+                      Avg {s.score}
                     </span>
                   )}
-                  {canScore && s.score == null && (
+                  {canViewJudgeScores &&
+                    !s.scoresPublished &&
+                    (s.completedJudgeCount ?? 0) > 0 && (
+                      <span className="text-xs text-fg-subtle">
+                        {s.completedJudgeCount} judge
+                        {(s.completedJudgeCount ?? 0) === 1 ? "" : "s"} complete
+                      </span>
+                    )}
+                  {!canScore &&
+                    !canViewJudgeScores &&
+                    !s.scoresPublished &&
+                    (s.judgeReviews || []).length > 0 && (
+                      <span className="text-xs text-fg-subtle">
+                        Reviews available
+                      </span>
+                    )}
+                  {canScore && !s.scoringCompleted && (
                     <span className="text-xs text-fg-subtle">Not scored</span>
                   )}
                 </div>
@@ -305,13 +338,23 @@ export function SubmissionReviewPanel({
                       <span>·</span>
                       <span className="text-purple-light">
                         {canViewJudgeScores
-                          ? `Average ${item.score}/100`
+                          ? `Published average ${item.score}/100`
                           : canScore
                             ? `Your score ${item.score}/100`
                             : `Score ${item.score}/100`}
                       </span>
                     </>
                   )}
+                  {canViewJudgeScores &&
+                    !item.scoresPublished &&
+                    item.averagePending != null && (
+                      <>
+                        <span>·</span>
+                        <span className="text-fg-subtle">
+                          Pending avg {item.averagePending}/100
+                        </span>
+                      </>
+                    )}
                 </p>
                 {canScore && item.breakdown && (
                   <p className="mt-1 text-xs text-fg-subtle">
@@ -520,7 +563,7 @@ export function SubmissionReviewPanel({
                         })
                       }
                     >
-                      Save my score
+                      {item.scoringCompleted ? "Update my score" : "Complete grading"}
                     </Button>
                     <Button
                       variant="outline"
@@ -543,13 +586,13 @@ export function SubmissionReviewPanel({
                           Judge scores
                         </h3>
                         <p className="mt-1 text-xs text-fg-subtle">
-                          Each judge scores with SMART. The leaderboard uses
-                          the average.
+                          You can view grades but cannot edit them. Publish when
+                          ready so teams and the leaderboard can see them.
                         </p>
                       </div>
                       {(item.judgeScores || []).length === 0 ? (
                         <p className="rounded-xl border border-line bg-surface-muted px-4 py-3 text-sm text-fg-muted">
-                          No judge has scored this project yet.
+                          No judge has completed grading yet.
                         </p>
                       ) : (
                         <div className="space-y-3">
@@ -560,9 +603,12 @@ export function SubmissionReviewPanel({
                             >
                               <div className="flex flex-wrap items-start justify-between gap-2">
                                 <div>
-                                  <p className="text-sm font-semibold text-fg">
-                                    {entry.judgeName}
-                                  </p>
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-sm font-semibold text-fg">
+                                      {entry.judgeName}
+                                    </p>
+                                    <Badge variant="success">Completed</Badge>
+                                  </div>
                                   <p className="mt-0.5 text-xs text-fg-subtle">
                                     {formatTimestamp(entry.updatedAt)}
                                   </p>
@@ -601,14 +647,76 @@ export function SubmissionReviewPanel({
                           ))}
                         </div>
                       )}
+                      {canPublishScores && item.canPublish && (
+                        <Button
+                          loading={busy}
+                          onClick={() => saveReview({ publishScores: true })}
+                        >
+                          Publish judge scores
+                        </Button>
+                      )}
+                      {canPublishScores && item.scoresPublished && (
+                        <p className="text-sm text-emerald-light">
+                          Scores published. Teams can see the grades.
+                        </p>
+                      )}
                     </div>
                   )}
+                  {!canViewJudgeScores &&
+                    (item.judgeReviews || []).length > 0 && (
+                      <div className="space-y-3">
+                        <div>
+                          <h3 className="text-sm font-semibold text-fg">
+                            Judge reviews
+                          </h3>
+                          <p className="mt-1 text-xs text-fg-subtle">
+                            {item.scoresPublished
+                              ? "Scores are published."
+                              : "Feedback is visible now. Scores stay hidden until administrators publish them."}
+                          </p>
+                        </div>
+                        {(item.judgeReviews || []).map((entry) => (
+                          <div
+                            key={entry.judgeId}
+                            className="rounded-xl border border-line bg-surface-muted p-4"
+                          >
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-sm font-semibold text-fg">
+                                {entry.judgeName}
+                              </p>
+                              <Badge variant="success">Completed</Badge>
+                              {entry.total != null && (
+                                <span className="text-sm text-purple-light">
+                                  {entry.total}/100
+                                </span>
+                              )}
+                            </div>
+                            {entry.notes ? (
+                              <p className="mt-2 whitespace-pre-wrap text-sm text-fg-muted">
+                                {entry.notes}
+                              </p>
+                            ) : (
+                              <p className="mt-2 text-sm text-fg-subtle">
+                                Grading completed
+                                {item.scoresPublished
+                                  ? "."
+                                  : ". Score stays private until published."}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   <Textarea
                     label="Comments / Feedback"
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     rows={4}
-                    placeholder="Share review notes for the team (required when reopening)"
+                    placeholder={
+                      canReopen
+                        ? "Required to reopen — tell the team what to fix"
+                        : "Share review notes for the team"
+                    }
                   />
                   <div className="flex flex-wrap gap-2">
                     <Button
@@ -627,14 +735,30 @@ export function SubmissionReviewPanel({
                     </Button>
                     {canReopen && (
                       <Button
-                        variant="ghost"
+                        variant="outline"
                         loading={busy}
+                        disabled={!comment.trim() || item.status === "DRAFT"}
                         onClick={() => saveReview({ status: "DRAFT" })}
                       >
-                        Reopen &amp; send feedback
+                        {item.status === "DRAFT"
+                          ? "Already reopened"
+                          : "Reopen for revision"}
                       </Button>
                     )}
                   </div>
+                  {canReopen && item.status !== "DRAFT" && (
+                    <p className="text-xs text-fg-subtle">
+                      Reopen unlocks the project so the team can edit and
+                      resubmit. Published scores are hidden again until you
+                      publish.
+                    </p>
+                  )}
+                  {canReopen && item.status === "DRAFT" && (
+                    <p className="text-sm text-amber-600 dark:text-amber-400">
+                      Project is reopened. Waiting for the team to revise and
+                      resubmit.
+                    </p>
+                  )}
                 </>
               )}
             </>

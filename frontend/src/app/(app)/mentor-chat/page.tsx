@@ -1,12 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Send } from "lucide-react";
-import { Avatar } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { PageLoader } from "@/components/ui/spinner";
 import { ChatMessageBubble } from "@/components/chat/chat-message-bubble";
+import { ChatEmptyState, ChatShell } from "@/components/chat/chat-shell";
 import { api, type ChatMessageDto } from "@/lib/api";
 import { getStoredUser } from "@/lib/auth";
 import { toast } from "@/components/ui/toast";
@@ -159,28 +157,31 @@ export default function MentorChatPage() {
   const sidebarPeople = (isMentor ? members : mentors).filter(
     (person) => person.id !== myId
   );
-  const otherMentors = mentors.filter((m) => m.id !== myId);
-  const otherMembers = members.filter((m) => m.id !== myId);
   const forwardTargets: Array<"team" | "mentor"> = isMentor
     ? ["mentor"]
     : ["team", "mentor"];
 
   return (
-    <div className="flex h-[calc(100dvh-11.5rem)] min-w-0 overflow-hidden rounded-[16px] border border-line sm:rounded-[20px] lg:h-[calc(100dvh-7rem)]">
-      <aside className="hidden w-60 shrink-0 border-r border-line bg-card p-4 md:block">
-        <p className="text-[10px] uppercase tracking-wider text-fg-subtle">
-          Mentorship
-        </p>
-        <p className="mt-1 truncate text-sm font-medium text-fg">
-          {teamName}
-        </p>
-        <p className="mt-1 text-xs text-fg-muted">
-          Only this team and its mentors can read these messages.
-        </p>
-
-        {isMentor && assignedTeams.length > 1 && (
-          <div className="mt-4 space-y-1">
-            <p className="text-[10px] uppercase tracking-wider text-fg-subtle">
+    <ChatShell
+      channelLabel="Mentorship"
+      title={teamName}
+      subtitle="Only this team and its mentors can read these messages"
+      members={sidebarPeople.map((p) => ({
+        id: p.id,
+        name: p.name,
+        title: p.title || (isMentor ? "Participant" : "Mentor"),
+      }))}
+      myId={myId}
+      membersHeading={isMentor ? "Participants" : "Mentors"}
+      composerValue={message}
+      onComposerChange={setMessage}
+      onSend={send}
+      sending={sending}
+      placeholder={isMentor ? "Message the team…" : "Message your mentors…"}
+      sidebarExtra={
+        isMentor && assignedTeams.length > 1 ? (
+          <div className="space-y-1">
+            <p className="px-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-fg-subtle">
               Switch team
             </p>
             {assignedTeams.map((t) => (
@@ -205,110 +206,49 @@ export default function MentorChatPage() {
                   }
                 }}
                 className={cn(
-                  "w-full rounded-xl px-3 py-2 text-left text-sm",
+                  "w-full rounded-xl px-3 py-2 text-left text-sm transition",
                   teamId === t.id
-                    ? "bg-brand/10 text-fg"
-                    : "text-fg-muted hover:bg-surface-muted"
+                    ? "bg-brand/12 font-medium text-fg ring-1 ring-brand/25"
+                    : "text-fg-muted hover:bg-surface-muted hover:text-fg"
                 )}
               >
                 {t.name}
               </button>
             ))}
           </div>
-        )}
-
-        <div className="mt-4 space-y-2">
-          <p className="text-[10px] uppercase tracking-wider text-fg-subtle">
-            {isMentor ? "Participants" : "Mentors"}
-          </p>
-          {sidebarPeople.length === 0 && (
-            <p className="text-xs text-fg-subtle">
-              {isMentor
-                ? "No participants on this team yet"
-                : "No mentors assigned yet"}
-            </p>
-          )}
-          {sidebarPeople.map((person) => (
-            <div key={person.id} className="flex items-center gap-2">
-              <Avatar name={person.name} size="sm" />
-              <div className="min-w-0">
-                <p className="truncate text-sm text-fg">{person.name}</p>
-                {person.title ? (
-                  <p className="truncate text-[11px] text-fg-subtle">
-                    {person.title}
-                  </p>
-                ) : null}
-              </div>
-            </div>
-          ))}
-        </div>
-      </aside>
-
-      <div className="flex min-w-0 flex-1 flex-col bg-canvas">
-        <div className="border-b border-line px-4 py-3 sm:px-5">
-          <p className="truncate text-sm font-semibold text-fg">
-            Mentorship · {teamName}
-          </p>
-          {!isMentor && otherMentors.length > 0 && (
-            <p className="mt-0.5 truncate text-xs text-fg-muted">
-              Mentors: {otherMentors.map((m) => m.name).join(", ")}
-            </p>
-          )}
-          {isMentor && otherMembers.length > 0 && (
-            <p className="mt-0.5 truncate text-xs text-fg-muted">
-              {otherMembers.length} participant
-              {otherMembers.length === 1 ? "" : "s"}
-            </p>
-          )}
-        </div>
-
-        <div className="flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-4 pb-10 sm:p-5">
-          {messages.length === 0 && (
-            <p className="text-sm text-fg-muted">
-              No messages yet. Start the conversation.
-            </p>
-          )}
-          {messages.map((m) => (
-            <ChatMessageBubble
-              key={m.id}
-              message={m}
-              currentChannel="mentor"
-              compact
-              forwardTargets={forwardTargets}
-              onReact={react}
-              onDelete={remove}
-              onForward={forward}
-            />
-          ))}
-        </div>
-
-        <div className="border-t border-line p-3 sm:p-4">
-          <div className="flex gap-2">
-            <input
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  send();
-                }
-              }}
-              placeholder={
-                isMentor ? "Message the team…" : "Message your mentors…"
-              }
-              className="min-w-0 flex-1 rounded-xl border border-line bg-surface-muted px-3 py-2.5 text-sm text-fg outline-none placeholder:text-fg-subtle focus:border-brand/50 sm:px-4"
-            />
-            <Button
-              onClick={send}
-              size="sm"
-              loading={sending}
-              className="shrink-0"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
+        ) : null
+      }
+      empty={
+        messages.length === 0 ? (
+          <ChatEmptyState
+            title="No messages yet"
+            description={
+              isMentor
+                ? "Send guidance, feedback, or check-ins to this team."
+                : "Ask your mentors questions or share progress updates."
+            }
+          />
+        ) : null
+      }
+    >
+      {messages.map((m, index) => {
+        const prev = messages[index - 1];
+        const showMeta =
+          !prev || prev.userId !== m.userId || prev.mine !== m.mine;
+        return (
+          <ChatMessageBubble
+            key={m.id}
+            message={m}
+            currentChannel="mentor"
+            compact
+            showMeta={showMeta}
+            forwardTargets={forwardTargets}
+            onReact={react}
+            onDelete={remove}
+            onForward={forward}
+          />
+        );
+      })}
+    </ChatShell>
   );
 }

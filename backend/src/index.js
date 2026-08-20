@@ -869,6 +869,28 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if (path === "/api/chat/judges" && req.method === "GET") {
+      await api.handleChat(req, res, "judges");
+      return;
+    }
+
+    if (path === "/api/chat/judges" && req.method === "POST") {
+      const body = await readBody(req);
+      await api.handlePostChat(req, res, body, "judges");
+      return;
+    }
+
+    if (path === "/api/chat/staff" && req.method === "GET") {
+      await api.handleChat(req, res, "staff");
+      return;
+    }
+
+    if (path === "/api/chat/staff" && req.method === "POST") {
+      const body = await readBody(req);
+      await api.handlePostChat(req, res, body, "staff");
+      return;
+    }
+
     if (path === "/api/chat/react" && req.method === "POST") {
       const body = await readBody(req);
       await api.handleReactChat(req, res, body);
@@ -988,6 +1010,29 @@ const server = http.createServer(async (req, res) => {
     const adminInviteMatch = path.match(/^\/api\/admin\/invites\/([^/]+)$/);
     if (adminInviteMatch && req.method === "DELETE") {
       await api.handleRevokeInvite(req, res, adminInviteMatch[1]);
+      return;
+    }
+
+    const adminStaffMatch = path.match(/^\/api\/admin\/staff\/([^/]+)$/);
+    if (adminStaffMatch && req.method === "DELETE") {
+      await api.handleAdminRevokeStaff(req, res, adminStaffMatch[1]);
+      return;
+    }
+
+    if (path === "/api/judge-resources" && req.method === "GET") {
+      await api.handleJudgeResources(req, res);
+      return;
+    }
+
+    if (path === "/api/judge-resources" && req.method === "POST") {
+      const body = await readBody(req);
+      await api.handleCreateJudgeResource(req, res, body);
+      return;
+    }
+
+    const judgeResourceMatch = path.match(/^\/api\/judge-resources\/([^/]+)$/);
+    if (judgeResourceMatch && req.method === "DELETE") {
+      await api.handleDeleteJudgeResource(req, res, judgeResourceMatch[1]);
       return;
     }
 

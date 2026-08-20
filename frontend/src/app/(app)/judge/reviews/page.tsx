@@ -6,7 +6,7 @@ export default function JudgeReviewsPage() {
   return (
     <SubmissionReviewPanel
       title="Score projects"
-      description="Open each team’s submitted files, then score them with SMART. You cannot see other judges’ marks."
+      description="Open each team’s files, score with SMART, and mark grading complete. Scores stay private until an administrator publishes them."
     />
   );
 }

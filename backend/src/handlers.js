@@ -564,10 +564,13 @@ async function buildLeaderboard() {
   });
 
   const rows = teams.map((team) => {
-    const scores = team.submissions.flatMap((s) =>
+    const published = team.submissions.filter(
+      (s) => s.status === "FINAL" || Boolean(s.scoresPublishedAt)
+    );
+    const scores = published.flatMap((s) =>
       s.scores.filter((sc) => !sc.judge || sc.judge.role === "JUDGE")
     );
-    const latest = team.submissions[0] || null;
+    const latest = published[0] || team.submissions[0] || null;
     const avg =
       scores.length > 0
         ? Math.round(
@@ -620,6 +623,18 @@ async function handleAnnouncements(req, res) {
     orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
   });
 
+  const audienceForRole = {
+    ADMIN: null,
+    MENTOR: ["general", "mentors"],
+    JUDGE: ["general", "judges"],
+    PARTICIPANT: ["general", "teams"],
+  };
+  const allowed = user ? audienceForRole[user.role] : ["general"];
+  const visible =
+    !allowed
+      ? items
+      : items.filter((a) => allowed.includes(a.audience || "general"));
+
   let readIds = new Set();
   if (user) {
     const reads = await prisma.notification.findMany({
@@ -633,14 +648,23 @@ async function handleAnnouncements(req, res) {
     readIds = new Set(reads.map((r) => r.title));
   }
 
+  const audienceLabel = {
+    general: "Everyone",
+    mentors: "Mentors",
+    judges: "Judges",
+    teams: "Teams",
+  };
+
   send(res, 200, {
     source: "database",
     updatedAt: new Date().toISOString(),
-    announcements: items.map((a) => ({
+    announcements: visible.map((a) => ({
       id: a.id,
       title: a.title,
       body: a.body,
       type: a.type,
+      audience: a.audience || "general",
+      audienceLabel: audienceLabel[a.audience] || "Everyone",
       pinned: a.pinned,
       author: a.author?.name || "Organizers",
       date: a.createdAt.toLocaleDateString("en-GB", {
@@ -654,6 +678,24 @@ async function handleAnnouncements(req, res) {
   });
 }
 
+function dashboardPathForRole(role) {
+  if (role === "ADMIN") return "/admin";
+  if (role === "MENTOR") return "/mentor";
+  if (role === "JUDGE") return "/judge";
+  return "/dashboard";
+}
+
+function announcementRecipientWhere(audience, authorId) {
+  const base = {
+    emailVerifiedAt: { not: null },
+    NOT: { id: authorId },
+  };
+  if (audience === "mentors") return { ...base, role: "MENTOR" };
+  if (audience === "judges") return { ...base, role: "JUDGE" };
+  if (audience === "teams") return { ...base, role: "PARTICIPANT" };
+  return base;
+}
+
 async function handleCreateAnnouncement(req, res, body) {
   const user = await requireUser(req);
   if (!user) return send(res, 401, { error: "Sign in required." });
@@ -665,22 +707,25 @@ async function handleCreateAnnouncement(req, res, body) {
     return send(res, 400, { error: "Title and body are required." });
   }
 
+  const audienceRaw = String(body.audience || "general").trim().toLowerCase();
+  const audience = ["general", "mentors", "judges", "teams"].includes(audienceRaw)
+    ? audienceRaw
+    : "general";
+
   const item = await prisma.announcement.create({
     data: {
       title,
       body: bodyText,
       type: String(body.type || "update"),
+      audience,
       pinned: Boolean(body.pinned),
       authorId: user.id,
     },
   });
 
   const recipients = await prisma.user.findMany({
-    where: {
-      emailVerifiedAt: { not: null },
-      NOT: { id: user.id },
-    },
-    select: { id: true, email: true, name: true },
+    where: announcementRecipientWhere(audience, user.id),
+    select: { id: true, email: true, name: true, role: true },
   });
 
   if (recipients.length) {
@@ -688,16 +733,16 @@ async function handleCreateAnnouncement(req, res, body) {
       data: recipients.map((p) => ({
         userId: p.id,
         title: item.title,
-        body: item.body.slice(0, 180),
+        body: item.body.slice(0, 120),
         category: "announcement",
         href: "/announcements",
       })),
     });
   }
 
-  const preview =
-    bodyText.length > 220 ? `${bodyText.slice(0, 220).trim()}…` : bodyText;
-  const announcementUrl = `${frontendBaseUrl(req)}/announcements`;
+  const brief =
+    bodyText.length > 120 ? `${bodyText.slice(0, 120).trim()}…` : bodyText;
+  const baseUrl = frontendBaseUrl(req);
 
   let emailed = 0;
   let emailError = null;
@@ -708,8 +753,8 @@ async function handleCreateAnnouncement(req, res, body) {
           toEmail: person.email,
           toName: person.name,
           title: item.title,
-          preview,
-          announcementUrl,
+          preview: brief,
+          dashboardUrl: `${baseUrl}${dashboardPathForRole(person.role)}`,
         })
       )
     );
@@ -1378,6 +1423,79 @@ async function handleSaveWorkspace(req, res, body) {
 async function handleChat(req, res, channel) {
   const user = await requireUser(req);
   if (!user) return send(res, 401, { error: "Sign in required." });
+
+  if (channel === "judges") {
+    if (user.role !== "JUDGE") {
+      return send(res, 403, { error: "Judges chat is for judges only." });
+    }
+    const messages = await prisma.chatMessage.findMany({
+      where: { channel: "judges", teamId: null },
+      include: {
+        author: true,
+        reactions: true,
+        forwardedFrom: { include: { author: true } },
+      },
+      orderBy: { createdAt: "asc" },
+      take: 300,
+    });
+    const judges = await prisma.user.findMany({
+      where: { role: "JUDGE", emailVerifiedAt: { not: null } },
+      select: { id: true, name: true, title: true, avatar: true },
+      orderBy: { name: "asc" },
+    });
+    return send(res, 200, {
+      teamId: null,
+      teamName: "Judges",
+      mentors: [],
+      members: judges.map((j) => ({
+        id: j.id,
+        name: j.name,
+        title: j.title || "Judge",
+        avatar: j.avatar,
+      })),
+      messages: messages.map((m) => serializeChatMessage(m, user.id)),
+    });
+  }
+
+  if (channel === "staff") {
+    if (user.role !== "JUDGE" && user.role !== "ADMIN") {
+      return send(res, 403, { error: "Staff chat is for judges and admins." });
+    }
+    const messages = await prisma.chatMessage.findMany({
+      where: { channel: "staff", teamId: null },
+      include: {
+        author: true,
+        reactions: true,
+        forwardedFrom: { include: { author: true } },
+      },
+      orderBy: { createdAt: "asc" },
+      take: 300,
+    });
+    const members = await prisma.user.findMany({
+      where: {
+        role: { in: ["JUDGE", "ADMIN"] },
+        emailVerifiedAt: { not: null },
+      },
+      select: { id: true, name: true, title: true, avatar: true, role: true },
+      orderBy: [{ role: "asc" }, { name: "asc" }],
+    });
+    return send(res, 200, {
+      teamId: null,
+      teamName: "Judges & Admins",
+      mentors: [],
+      members: members.map((m) => ({
+        id: m.id,
+        name: m.name,
+        title:
+          m.title ||
+          (m.role === "ADMIN" ? "Administrator" : "Judge"),
+        avatar: m.avatar,
+        role: m.role,
+      })),
+      messages: messages.map((m) => serializeChatMessage(m, user.id)),
+    });
+  }
+
   const membership = await getMembership(user.id);
   if (!membership && user.role === "PARTICIPANT") {
     return send(res, 404, { error: "Join a team first." });
@@ -1480,6 +1598,24 @@ function serializeChatMessage(m, viewerId) {
 }
 
 async function assertChatAccess(user, teamId, channel) {
+  if (channel === "judges") {
+    if (user.role === "JUDGE") {
+      return { ok: true, membership: null };
+    }
+    return { ok: false, status: 403, error: "Judges chat is for judges only." };
+  }
+
+  if (channel === "staff") {
+    if (user.role === "JUDGE" || user.role === "ADMIN") {
+      return { ok: true, membership: null };
+    }
+    return {
+      ok: false,
+      status: 403,
+      error: "Staff chat is for judges and admins.",
+    };
+  }
+
   const membership = await getMembership(user.id);
 
   if (user.role === "PARTICIPANT") {
@@ -1659,6 +1795,91 @@ async function handlePostChat(req, res, body, channel) {
   const user = await requireUser(req);
   if (!user) return send(res, 401, { error: "Sign in required." });
 
+  const text = String(body.text || body.body || "").trim();
+  if (!text) return send(res, 400, { error: "Message required." });
+
+  if (channel === "judges") {
+    if (user.role !== "JUDGE") {
+      return send(res, 403, { error: "Judges chat is for judges only." });
+    }
+    const message = await prisma.chatMessage.create({
+      data: {
+        teamId: null,
+        channel: "judges",
+        authorId: user.id,
+        body: text,
+      },
+      include: {
+        author: true,
+        reactions: true,
+        forwardedFrom: { include: { author: true } },
+      },
+    });
+    const judges = await prisma.user.findMany({
+      where: {
+        role: "JUDGE",
+        emailVerifiedAt: { not: null },
+        NOT: { id: user.id },
+      },
+      select: { id: true },
+    });
+    if (judges.length) {
+      await prisma.notification.createMany({
+        data: judges.map((j) => ({
+          userId: j.id,
+          title: "Judges chat",
+          body: `${user.name}: ${text.slice(0, 120)}`,
+          category: "chat",
+          href: "/judge/chat",
+        })),
+      });
+    }
+    return send(res, 201, {
+      message: serializeChatMessage(message, user.id),
+    });
+  }
+
+  if (channel === "staff") {
+    if (user.role !== "JUDGE" && user.role !== "ADMIN") {
+      return send(res, 403, { error: "Staff chat is for judges and admins." });
+    }
+    const message = await prisma.chatMessage.create({
+      data: {
+        teamId: null,
+        channel: "staff",
+        authorId: user.id,
+        body: text,
+      },
+      include: {
+        author: true,
+        reactions: true,
+        forwardedFrom: { include: { author: true } },
+      },
+    });
+    const peers = await prisma.user.findMany({
+      where: {
+        role: { in: ["JUDGE", "ADMIN"] },
+        emailVerifiedAt: { not: null },
+        NOT: { id: user.id },
+      },
+      select: { id: true, role: true },
+    });
+    if (peers.length) {
+      await prisma.notification.createMany({
+        data: peers.map((p) => ({
+          userId: p.id,
+          title: "Judges & admins chat",
+          body: `${user.name}: ${text.slice(0, 120)}`,
+          category: "chat",
+          href: p.role === "ADMIN" ? "/admin/judge-chat" : "/judge/staff-chat",
+        })),
+      });
+    }
+    return send(res, 201, {
+      message: serializeChatMessage(message, user.id),
+    });
+  }
+
   const membership = await getMembership(user.id);
   let teamId = body.teamId ? String(body.teamId) : membership?.team.id || null;
 
@@ -1667,8 +1888,6 @@ async function handlePostChat(req, res, body, channel) {
     teamId = assigned[0] || null;
   }
   if (!teamId) return send(res, 400, { error: "Team required." });
-  const text = String(body.text || body.body || "").trim();
-  if (!text) return send(res, 400, { error: "Message required." });
 
   if (user.role === "PARTICIPANT") {
     if (!membership || membership.team.id !== teamId) {
@@ -1742,13 +1961,67 @@ async function handleSubmission(req, res) {
 
   const submission = await prisma.submission.findFirst({
     where: { teamId: membership.team.id },
+    include: {
+      scores: {
+        orderBy: { updatedAt: "desc" },
+        include: {
+          judge: { select: { id: true, name: true, role: true } },
+        },
+      },
+    },
     orderBy: { updatedAt: "desc" },
   });
 
+  if (!submission) {
+    return send(res, 200, {
+      submission: null,
+      isLead: membership.role === "LEAD",
+      canSubmit: membership.role === "LEAD",
+      judgeReviews: [],
+      scoresPublished: false,
+    });
+  }
+
+  const scoresPublished =
+    submission.status === "FINAL" || Boolean(submission.scoresPublishedAt);
+  const judgeScores = submission.scores.filter(
+    (sc) => sc.judge?.role === "JUDGE"
+  );
+  const average =
+    judgeScores.length > 0
+      ? Math.round(
+          judgeScores.reduce((sum, sc) => sum + sc.total, 0) / judgeScores.length
+        )
+      : null;
+
+  const judgeReviews = judgeScores.map((sc) => ({
+    judgeId: sc.judgeId,
+    judgeName: sc.judge?.name || "Judge",
+    notes: sc.notes,
+    updatedAt: sc.updatedAt,
+    completed: true,
+    ...(scoresPublished
+      ? { total: sc.total, breakdown: scoreBreakdown(sc) }
+      : {}),
+  }));
+
+  const { scores, ...submissionPublic } = submission;
+
   send(res, 200, {
-    submission,
+    submission: submissionPublic,
     isLead: membership.role === "LEAD",
     canSubmit: membership.role === "LEAD",
+    reviewStatus:
+      submission.status === "DRAFT"
+        ? "draft"
+        : scoresPublished
+          ? "complete"
+          : submission.status === "SUBMITTED"
+            ? "pending"
+            : "in_review",
+    scoresPublished,
+    publishedAverage: scoresPublished ? average : null,
+    judgeReviews,
   });
 }
 
@@ -2123,11 +2396,11 @@ async function handleAdminSubmissions(req, res) {
     teamFilter = { teamId: { in: teamIds } };
   }
 
-  // Hide drafts from mentors/admins/judges - teams only
+  // Hide never-submitted drafts; keep reopened projects (submittedAt set) visible
   const submissions = await prisma.submission.findMany({
     where: {
       ...teamFilter,
-      status: { not: "DRAFT" },
+      OR: [{ status: { not: "DRAFT" } }, { submittedAt: { not: null } }],
     },
     include: {
       team: true,
@@ -2144,6 +2417,7 @@ async function handleAdminSubmissions(req, res) {
   send(res, 200, {
     canScore: user.role === "JUDGE",
     canReopen: user.role === "ADMIN",
+    canPublishScores: user.role === "ADMIN",
     canViewJudgeScores: user.role === "ADMIN",
     canReview: true,
     submissions: submissions.map((s) => {
@@ -2152,6 +2426,8 @@ async function handleAdminSubmissions(req, res) {
         user.role === "JUDGE"
           ? s.scores.find((sc) => sc.judgeId === user.id) || null
           : null;
+      const scoresPublished =
+        s.status === "FINAL" || Boolean(s.scoresPublishedAt);
       const average =
         judgeScores.length > 0
           ? Math.round(
@@ -2160,6 +2436,20 @@ async function handleAdminSubmissions(req, res) {
             )
           : null;
 
+      const reviews = judgeScores.map((sc) => ({
+        judgeId: sc.judgeId,
+        judgeName: sc.judge?.name || "Judge",
+        notes: sc.notes,
+        updatedAt: sc.updatedAt,
+        completed: true,
+        ...(scoresPublished
+          ? {
+              total: sc.total,
+              breakdown: scoreBreakdown(sc),
+            }
+          : {}),
+      }));
+
       const shared = {
         id: s.id,
         teamId: s.teamId,
@@ -2167,6 +2457,8 @@ async function handleAdminSubmissions(req, res) {
         project: s.title,
         description: s.description,
         status: s.status,
+        scoresPublished,
+        scoresPublishedAt: s.scoresPublishedAt,
         timestamp: s.submittedAt || s.updatedAt,
         repo: s.repoUrl,
         demo: s.demoUrl,
@@ -2178,11 +2470,13 @@ async function handleAdminSubmissions(req, res) {
         zip: s.zipUrl,
         version: "v1",
         files: submissionFileLinks(s),
+        judgeReviews: reviews,
       };
 
       if (user.role === "JUDGE") {
         return {
           ...shared,
+          scoringCompleted: Boolean(myScore),
           score: myScore?.total ?? null,
           scoreNotes: myScore?.notes ?? null,
           breakdown: scoreBreakdown(myScore),
@@ -2192,10 +2486,13 @@ async function handleAdminSubmissions(req, res) {
       if (user.role === "ADMIN") {
         return {
           ...shared,
-          score: average,
+          score: scoresPublished ? average : null,
+          averagePending: !scoresPublished ? average : null,
           scoreNotes: null,
           breakdown: null,
           judgeCount: judgeScores.length,
+          completedJudgeCount: judgeScores.length,
+          canPublish: !scoresPublished && judgeScores.length > 0,
           judgeScores: judgeScores.map((sc) => ({
             judgeId: sc.judgeId,
             judgeName: sc.judge?.name || "Judge",
@@ -2203,13 +2500,14 @@ async function handleAdminSubmissions(req, res) {
             notes: sc.notes,
             breakdown: scoreBreakdown(sc),
             updatedAt: sc.updatedAt,
+            completed: true,
           })),
         };
       }
 
       return {
         ...shared,
-        score: null,
+        score: scoresPublished ? average : null,
         scoreNotes: null,
         breakdown: null,
       };
@@ -2247,6 +2545,35 @@ async function handleAdminUpdateSubmission(req, res, body) {
   if (user.role === "JUDGE" && status === "FINAL") {
     status = "UNDER_REVIEW";
   }
+
+  const publishScores = Boolean(body.publishScores);
+  if (publishScores) {
+    if (user.role !== "ADMIN") {
+      return send(res, 403, {
+        error: "Only administrators can publish judge scores.",
+      });
+    }
+    const judgeScoreCount = await prisma.score.count({
+      where: {
+        submissionId: id,
+        judge: { role: "JUDGE" },
+      },
+    });
+    if (!judgeScoreCount) {
+      return send(res, 400, {
+        error: "Publish after at least one judge has completed grading.",
+      });
+    }
+    status = "FINAL";
+  }
+
+  // Admins may reopen or mark in review; FINAL only via publishScores.
+  if (user.role === "ADMIN" && status === "FINAL" && !publishScores) {
+    return send(res, 400, {
+      error: "Use Publish judge scores to release grades. Admins cannot set FINAL manually.",
+    });
+  }
+
   const allowed =
     user.role === "ADMIN"
       ? ["DRAFT", "SUBMITTED", "UNDER_REVIEW", "FINAL"]
@@ -2262,6 +2589,10 @@ async function handleAdminUpdateSubmission(req, res, body) {
     });
   }
 
+  if (status === "DRAFT" && user.role === "ADMIN") {
+    // Reopen clears published scores visibility
+  }
+
   const wantsScore =
     (body.score != null && body.score !== "") ||
     body.specific != null ||
@@ -2274,6 +2605,11 @@ async function handleAdminUpdateSubmission(req, res, body) {
     if (user.role !== "JUDGE") {
       return send(res, 403, {
         error: "Only judges can score projects.",
+      });
+    }
+    if (existing.status === "FINAL" || existing.scoresPublishedAt) {
+      return send(res, 403, {
+        error: "Scores are published. Ask an administrator to reopen if changes are needed.",
       });
     }
 
@@ -2304,7 +2640,7 @@ async function handleAdminUpdateSubmission(req, res, body) {
       specific + measurable + achievable + relevant + timeBound;
 
     publishedScore = rounded;
-    if (!status && existing.status === "SUBMITTED") {
+    if (!status && (existing.status === "SUBMITTED" || existing.status === "UNDER_REVIEW")) {
       status = "UNDER_REVIEW";
     }
     await prisma.score.upsert({
@@ -2334,17 +2670,34 @@ async function handleAdminUpdateSubmission(req, res, body) {
     });
   }
 
+  const updateData = {};
+  if (status) updateData.status = status;
+  if (publishScores) {
+    updateData.scoresPublishedAt = new Date();
+    updateData.status = "FINAL";
+  }
+  if (status === "DRAFT") {
+    if (user.role !== "ADMIN") {
+      return send(res, 403, {
+        error: "Only administrators can reopen a project for revision.",
+      });
+    }
+    updateData.scoresPublishedAt = null;
+    updateData.status = "DRAFT";
+  }
+
   const submission = await prisma.submission.update({
     where: { id },
-    data: status ? { status } : {},
+    data: updateData,
     include: { team: true },
   });
 
   const notesText = String(body.notes || "").trim();
   const reopened = status === "DRAFT";
-  const published = Boolean(publishedScore != null) || status === "FINAL";
+  const scoresJustPublished = publishScores;
+  const judgeCompleted = Boolean(publishedScore != null);
 
-  if (notesText || reopened || published) {
+  if (notesText || reopened || scoresJustPublished || judgeCompleted) {
     if (reopened && !notesText) {
       return send(res, 400, {
         error: "Add feedback so the team knows what to fix when reopening.",
@@ -2354,24 +2707,35 @@ async function handleAdminUpdateSubmission(req, res, body) {
       where: { teamId: existing.teamId },
       select: { userId: true },
     });
+    const mentorIds = new Set();
+    const linkedMentors = await prisma.teamMentor.findMany({
+      where: { teamId: existing.teamId },
+      select: { mentorId: true },
+    });
+    for (const m of linkedMentors) mentorIds.add(m.mentorId);
+    if (existing.team.mentorId) mentorIds.add(existing.team.mentorId);
 
     let title;
     let bodyText;
+    let category = "mentor";
+    let href = "/submit";
     if (reopened) {
       title = `Submission reopened: ${existing.title}`;
       bodyText = `Your project was reopened for updates. Feedback: ${notesText}`;
-    } else if (published) {
-      title =
-        publishedScore != null
-          ? `Judge scored: ${existing.title}`
-          : `Review update: ${existing.title}`;
+      category = "announcement";
+    } else if (scoresJustPublished) {
+      title = `Scores published: ${existing.title}`;
       bodyText =
-        publishedScore != null
-          ? `A judge scored your project.${
-              notesText ? ` Feedback: ${notesText}` : ""
-            }`
-          : notesText ||
-            "Your project was marked complete. Rankings use the average of judge scores.";
+        "Final scores from the judges are now available on the leaderboard and your submission page.";
+      category = "leaderboard";
+      href = "/leaderboard";
+    } else if (judgeCompleted) {
+      title = `Judge review: ${existing.title}`;
+      bodyText = notesText
+        ? `${user.name} completed grading and left feedback: ${notesText}`
+        : `${user.name} completed grading. Scores stay private until administrators publish them.`;
+      category = "mentor";
+      href = "/submit";
     } else {
       title =
         user.role === "ADMIN"
@@ -2382,16 +2746,17 @@ async function handleAdminUpdateSubmission(req, res, body) {
       bodyText = notesText;
     }
 
-    for (const m of members) {
-      await notify(m.userId, {
+    const recipients = new Set(members.map((m) => m.userId));
+    if (judgeCompleted || notesText) {
+      for (const mentorId of mentorIds) recipients.add(mentorId);
+    }
+
+    for (const userId of recipients) {
+      await notify(userId, {
         title,
         body: bodyText.slice(0, 220),
-        category: published
-          ? "leaderboard"
-          : user.role === "ADMIN"
-            ? "announcement"
-            : "mentor",
-        href: published ? "/leaderboard" : "/submit",
+        category,
+        href: mentorIds.has(userId) ? "/mentor/reviews" : href,
       });
     }
   }
@@ -2673,6 +3038,7 @@ async function handleAdminStaff(req, res) {
     invites: invites.map(publicInvite),
     admins: staff.filter((s) => s.role === "ADMIN"),
     judges: staff.filter((s) => s.role === "JUDGE"),
+    meId: user.id,
   });
 }
 
@@ -2772,6 +3138,143 @@ async function handleRevokeInvite(req, res, inviteId) {
   send(res, 200, { ok: true, id: inviteId });
 }
 
+async function handleAdminRevokeStaff(req, res, staffId) {
+  const user = await requireUser(req);
+  if (!user) return send(res, 401, { error: "Sign in required." });
+  if (user.role !== "ADMIN") return send(res, 403, { error: "Admins only." });
+
+  const id = String(staffId || "").trim();
+  if (!id) return send(res, 400, { error: "Staff id is required." });
+  if (id === user.id) {
+    return send(res, 400, { error: "You cannot revoke your own account." });
+  }
+
+  const target = await prisma.user.findUnique({ where: { id } });
+  if (!target || (target.role !== "ADMIN" && target.role !== "JUDGE")) {
+    return send(res, 404, { error: "Administrator or judge account not found." });
+  }
+
+  if (target.role === "ADMIN") {
+    const otherAdmins = await prisma.user.count({
+      where: {
+        role: "ADMIN",
+        emailVerifiedAt: { not: null },
+        NOT: { id: target.id },
+      },
+    });
+    if (otherAdmins < 1) {
+      return send(res, 400, {
+        error: "Cannot revoke the last administrator account.",
+      });
+    }
+  }
+
+  await prisma.user.delete({ where: { id: target.id } });
+  send(res, 200, {
+    ok: true,
+    id: target.id,
+    role: target.role,
+    message:
+      target.role === "ADMIN"
+        ? "Administrator account revoked."
+        : "Judge account revoked.",
+  });
+}
+
+async function handleJudgeResources(req, res) {
+  const user = await requireUser(req);
+  if (!user) return send(res, 401, { error: "Sign in required." });
+  if (user.role !== "JUDGE" && user.role !== "ADMIN") {
+    return send(res, 403, { error: "Judges and admins only." });
+  }
+
+  const resources = await prisma.judgeResource.findMany({
+    include: { author: { select: { id: true, name: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+
+  send(res, 200, {
+    canManage: user.role === "ADMIN",
+    resources: resources.map((r) => ({
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      url: r.url,
+      fileName: r.fileName,
+      author: r.author?.name || "Admin",
+      createdAt: r.createdAt,
+    })),
+  });
+}
+
+async function handleCreateJudgeResource(req, res, body) {
+  const user = await requireUser(req);
+  if (!user) return send(res, 401, { error: "Sign in required." });
+  if (user.role !== "ADMIN") return send(res, 403, { error: "Admins only." });
+
+  const title = String(body.title || "").trim();
+  const url = String(body.url || "").trim();
+  const description = String(body.description || "").trim() || null;
+  const fileName = String(body.fileName || "").trim() || null;
+  if (!title || !url) {
+    return send(res, 400, { error: "Title and file or link are required." });
+  }
+
+  const resource = await prisma.judgeResource.create({
+    data: {
+      title,
+      description,
+      url,
+      fileName,
+      authorId: user.id,
+    },
+  });
+
+  const judges = await prisma.user.findMany({
+    where: { role: "JUDGE", emailVerifiedAt: { not: null } },
+    select: { id: true },
+  });
+  if (judges.length) {
+    await prisma.notification.createMany({
+      data: judges.map((j) => ({
+        userId: j.id,
+        title: `New judge resource: ${title}`,
+        body: description
+          ? description.slice(0, 160)
+          : "Administrators shared a resource for judges.",
+        category: "announcement",
+        href: "/judge/resources",
+      })),
+    });
+  }
+
+  send(res, 201, {
+    resource: {
+      id: resource.id,
+      title: resource.title,
+      description: resource.description,
+      url: resource.url,
+      fileName: resource.fileName,
+      createdAt: resource.createdAt,
+    },
+  });
+}
+
+async function handleDeleteJudgeResource(req, res, resourceId) {
+  const user = await requireUser(req);
+  if (!user) return send(res, 401, { error: "Sign in required." });
+  if (user.role !== "ADMIN") return send(res, 403, { error: "Admins only." });
+
+  const id = String(resourceId || "").trim();
+  if (!id) return send(res, 400, { error: "Resource id required." });
+
+  const existing = await prisma.judgeResource.findUnique({ where: { id } });
+  if (!existing) return send(res, 404, { error: "Resource not found." });
+
+  await prisma.judgeResource.delete({ where: { id } });
+  send(res, 200, { ok: true, id });
+}
+
 /** Public mentor directory — profile fields only, no emails. */
 async function handlePublicMentors(_req, res) {
   const mentors = await prisma.user.findMany({
@@ -2848,6 +3351,10 @@ module.exports = {
   handleCreateInvite,
   handleResendInvite,
   handleRevokeInvite,
+  handleAdminRevokeStaff,
+  handleJudgeResources,
+  handleCreateJudgeResource,
+  handleDeleteJudgeResource,
   handleCreateTeam,
   handleSetTeamsLocked,
   handleDeleteTeam,

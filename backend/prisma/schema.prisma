@@ -37,6 +37,8 @@ enum TaskColumn {
 enum ChatChannel {
   team
   mentor
+  judges
+  staff
 }
 
 model User {
@@ -73,6 +75,7 @@ model User {
   responsibilities TeamResponsibility[]
   taskComments    TaskComment[]
   invitesSent     Invite[]        @relation("InvitedBy")
+  judgeResources  JudgeResource[] @relation("JudgeResourceAuthor")
 
   @@index([role])
   @@map("users")
@@ -187,10 +190,11 @@ model Submission {
   docsUrl      String?
   prototypeUrl String?
   zipUrl       String?
-  status       SubmissionStatus @default(DRAFT)
-  submittedAt  DateTime?
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  status            SubmissionStatus @default(DRAFT)
+  submittedAt       DateTime?
+  scoresPublishedAt DateTime?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
 
   team      Team      @relation(fields: [teamId], references: [id], onDelete: Cascade)
   challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Restrict)
@@ -230,6 +234,7 @@ model Announcement {
   title     String
   body      String
   type      String   @default("update")
+  audience  String   @default("general")
   pinned    Boolean  @default(false)
   authorId  String?
   createdAt DateTime @default(now())
@@ -238,7 +243,23 @@ model Announcement {
   author User? @relation(fields: [authorId], references: [id], onDelete: SetNull)
 
   @@index([pinned, createdAt])
+  @@index([audience])
   @@map("announcements")
+}
+
+model JudgeResource {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  url         String
+  fileName    String?
+  authorId    String
+  createdAt   DateTime @default(now())
+
+  author User @relation("JudgeResourceAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
+  @@map("judge_resources")
 }
 
 model Faq {
@@ -327,7 +348,7 @@ model WorkspaceDoc {
 
 model ChatMessage {
   id              String      @id @default(cuid())
-  teamId          String
+  teamId          String?
   channel         ChatChannel @default(team)
   authorId        String
   body            String
@@ -335,13 +356,14 @@ model ChatMessage {
   forwardedFromId String?
   createdAt       DateTime    @default(now())
 
-  team          Team           @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team          Team?          @relation(fields: [teamId], references: [id], onDelete: Cascade)
   author        User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
   forwardedFrom ChatMessage?   @relation("ChatForward", fields: [forwardedFromId], references: [id], onDelete: SetNull)
   forwards      ChatMessage[]  @relation("ChatForward")
   reactions     ChatReaction[]
 
   @@index([teamId, channel, createdAt])
+  @@index([channel, createdAt])
   @@map("chat_messages")
 }
 

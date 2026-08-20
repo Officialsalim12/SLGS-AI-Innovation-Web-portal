@@ -17,6 +17,35 @@ type Announcement = Awaited<
   ReturnType<typeof api.announcements>
 >["announcements"][number];
 
+type Audience = "general" | "mentors" | "judges" | "teams";
+
+const selectClass =
+  "h-11 w-full rounded-2xl border border-line bg-input px-4 text-sm text-fg outline-none focus:border-brand/50 focus:ring-2 focus:ring-brand/20";
+
+const audienceOptions: Array<{ value: Audience; label: string; hint: string }> =
+  [
+    {
+      value: "general",
+      label: "Everyone",
+      hint: "All verified accounts on the portal",
+    },
+    {
+      value: "mentors",
+      label: "Mentors",
+      hint: "Mentor accounts only",
+    },
+    {
+      value: "judges",
+      label: "Judges",
+      hint: "Judge accounts only",
+    },
+    {
+      value: "teams",
+      label: "Teams",
+      hint: "Participant / team accounts only",
+    },
+  ];
+
 export default function AnnouncementsPage() {
   const [items, setItems] = useState<Announcement[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
@@ -26,6 +55,7 @@ export default function AnnouncementsPage() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [pinned, setPinned] = useState(false);
+  const [audience, setAudience] = useState<Audience>("general");
   const [posting, setPosting] = useState(false);
 
   async function load() {
@@ -65,11 +95,13 @@ export default function AnnouncementsPage() {
         title: title.trim(),
         body: body.trim(),
         pinned,
+        audience,
         type: "update",
       });
       setTitle("");
       setBody("");
       setPinned(false);
+      setAudience("general");
       await load();
       if (result.emailError && result.emailed === 0) {
         toast(
@@ -85,7 +117,7 @@ export default function AnnouncementsPage() {
         toast("Announcement published.", "success");
       } else {
         toast(
-          `Announcement published. ${result.emailed} ${result.emailed === 1 ? "person was" : "people were"} emailed.`,
+          `Announcement published. ${result.emailed} ${result.emailed === 1 ? "person was" : "people were"} emailed a brief notice.`,
           "success"
         );
       }
@@ -120,7 +152,7 @@ export default function AnnouncementsPage() {
         title="Announcements"
         description={
           isAdmin
-            ? "Post updates for the portal. Everyone with a verified email is notified and emailed."
+            ? "Post updates for everyone, mentors, judges, or teams. Recipients get a brief email and read the full post here."
             : "Updates posted by administrators."
         }
       />
@@ -130,7 +162,8 @@ export default function AnnouncementsPage() {
           <div>
             <h2 className="text-lg font-semibold text-fg">New announcement</h2>
             <p className="mt-1 text-sm text-fg-muted">
-              Recipients get this by email, with a link to read the full post.
+              Emails include a short preview only. Recipients open their
+              dashboard to read the full announcement.
             </p>
           </div>
           <Input
@@ -139,12 +172,35 @@ export default function AnnouncementsPage() {
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Announcement title"
           />
+          <div className="space-y-1.5">
+            <label
+              htmlFor="announce-audience"
+              className="block text-sm font-medium text-fg-muted"
+            >
+              Send to
+            </label>
+            <select
+              id="announce-audience"
+              className={selectClass}
+              value={audience}
+              onChange={(e) => setAudience(e.target.value as Audience)}
+            >
+              {audienceOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-fg-subtle">
+              {audienceOptions.find((o) => o.value === audience)?.hint}
+            </p>
+          </div>
           <Textarea
-            label="Message"
+            label="Full message"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={4}
-            placeholder="Write the announcement for the programme…"
+            placeholder="Write the full announcement for the programme…"
           />
           <label className="flex items-center gap-3 text-sm text-fg">
             <input
@@ -184,6 +240,9 @@ export default function AnnouncementsPage() {
                     <h2 className="text-lg font-medium text-fg">{a.title}</h2>
                     {a.unread && <Badge variant="purple">Unread</Badge>}
                     {a.pinned && <Badge variant="warning">Pinned</Badge>}
+                    {a.audienceLabel && a.audience !== "general" && (
+                      <Badge variant="blue">{a.audienceLabel}</Badge>
+                    )}
                   </div>
                   <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-fg-muted">
                     <span className="inline-flex items-center gap-1.5">
@@ -198,12 +257,12 @@ export default function AnnouncementsPage() {
                     </p>
                   )}
                   <Button
+                    className="mt-3"
                     variant="outline"
                     size="sm"
-                    className="mt-4"
                     onClick={() => setOpenId(open ? null : a.id)}
                   >
-                    {open ? "Show less" : "Read More"}
+                    {open ? "Hide" : "Read full announcement"}
                   </Button>
                 </div>
               </div>
